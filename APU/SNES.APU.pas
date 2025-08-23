@@ -30,16 +30,14 @@ uses
 
 const
   // Conteúdo da IPL ROM da APU
-  APUROM: array[0..63] of Byte = (
-    $CD, $EF, $BD, $E8, $00, $C6, $1D, $D0,
-    $FC, $8F, $AA, $F4, $8F, $BB, $F5, $78,
-    $CC, $F4, $D0, $FB, $2F, $19, $EB, $F4,
-    $D0, $FC, $7E, $F4, $D0, $0B, $E4, $F5,
-    $CB, $F4, $D7, $00, $FC, $D0, $F3, $AB,
-    $01, $10, $EF, $7E, $F4, $10, $EB, $BA,
-    $F6, $DA, $00, $BA, $F4, $C4, $F4, $DD,
-    $5D, $D0, $DB, $1F, $00, $00, $C0, $FF
-  );
+  APUROM: array[0..63] of Byte = ($CD, $EF, $BD, $E8, $00, $C6, $1D, $D0,
+                                  $FC, $8F, $AA, $F4, $8F, $BB, $F5, $78,
+                                  $CC, $F4, $D0, $FB, $2F, $19, $EB, $F4,
+                                  $D0, $FC, $7E, $F4, $D0, $0B, $E4, $F5,
+                                  $CB, $F4, $D7, $00, $FC, $D0, $F3, $AB,
+                                  $01, $10, $EF, $7E, $F4, $10, $EB, $BA,
+                                  $F6, $DA, $00, $BA, $F4, $C4, $F4, $DD,
+                                  $5D, $D0, $DB, $1F, $00, $00, $C0, $FF);
 
 // --- Implementação das Funções Públicas ---
 
@@ -154,7 +152,7 @@ procedure APUMainLoop;
 begin
    while CPU.Cycles < EXT.NextAPUTimerPos do
    begin
-      APUExecute; // Chama o loop de execução do SPC700
+      APUMainLoop; // Chama o loop de execução do SPC700
       APUTimerPulse;
       EXT.APUTimerCounter_err := EXT.APUTimerCounter_err + EXT.APUTimerCounter;
       EXT.NextAPUTimerPos := EXT.NextAPUTimerPos + (EXT.APUTimerCounter_err shr FIXED_POINT_SHIFT);
@@ -212,98 +210,137 @@ end;
 
 function APUSetByteCommon(ByteValue: Byte; Address: Word): Boolean;
 begin
-  Result := True;
-  case Address of
-    $F1: SetAPUControl(ByteValue);
-    $F3: APUDSPIn(IAPU.RAM[$F2] and $7F, ByteValue);
-    $F4, $F5, $F6, $F7: APU.OutPorts[Address and 3] := ByteValue;
-    $FA, $FB, $FC:
+   Result := True;
+   case Address of
+      $F1: SetAPUControl(ByteValue);
+      $F3: APUDSPIn(IAPU.RAM[$F2] and $7F, ByteValue);
+      $F4, $F5, $F6, $F7: APU.OutPorts[Address and 3] := ByteValue;
+      $FA, $FB, $FC:
       begin
-        IAPU.RAM[Address] := ByteValue;
-        APU.TimerTarget[Address - $FA] := iif(ByteValue = 0, $100, ByteValue);
+         IAPU.RAM[Address] := ByteValue;
+         if ByteValue = 0 then
+            APU.TimerTarget[Address - $FA] := $100
+         else
+            APU.TimerTarget[Address - $FA] := ByteValue;
       end;
-    $FD, $FE, $FF: ; // Registradores somente leitura
-  else
-    Result := False;
-  end;
+      $FD, $FE, $FF: ; // Registradores somente leitura
+      else
+         Result := False;
+   end;
 end;
 
 procedure APUSetByte(ByteValue: Byte; Address: Word);
 begin
-  if APUSetByteCommon(ByteValue, Address) then
-    Exit;
+   if APUSetByteCommon(ByteValue, Address) then
+      Exit;
 
-  if Address < $FFC0 then
-  begin
-    IAPU.RAM[Address] := ByteValue;
-    Exit;
-  end;
+   if Address < $FFC0 then
+   begin
+      IAPU.RAM[Address] := ByteValue;
+      Exit;
+   end;
 
-  APU.ExtraRAM[Address - $FFC0] := ByteValue;
-  if not APU.ShowROM then
-    IAPU.RAM[Address] := ByteValue;
+   APU.ExtraRAM[Address - $FFC0] := ByteValue;
+   if not APU.ShowROM then
+      IAPU.RAM[Address] := ByteValue;
 end;
 
 procedure APUSetByteDP(ByteValue: Byte; Address: Byte);
 begin
-  if (IAPU.DirectPage = IAPU.RAM) and APUSetByteCommon(ByteValue, Address) then
-    Exit;
+   if (IAPU.DirectPage = IAPU.RAM) and APUSetByteCommon(ByteValue, Address) then
+      Exit;
 
-  IAPU.DirectPage[Address] := ByteValue;
+   IAPU.DirectPage[Address] := ByteValue;
 end;
 
 function APUGetByte(Address: Word): Byte;
 var
-  r: Byte;
+   r: Byte;
 begin
-  case Address of
-    $F0, $F1, $FA, $FB, $FC: Result := 0; // Registradores somente escrita
-    $F3:
+   case Address of
+      $F0, $F1, $FA, $FB, $FC: Result := 0; // Registradores somente escrita
+      $F3:
       begin
-        r := IAPU.RAM[$F2] and $7F;
-        if (r and $0F) = APU_ENVX then
-          Result := APU.DSP[r] and $7F
-        else
-          Result := APU.DSP[r];
+         r := IAPU.RAM[$F2] and $7F;
+         if (r and $0F) = APU_ENVX then
+            Result := APU.DSP[r] and $7F
+         else
+            Result := APU.DSP[r];
       end;
-    $F4, $F5, $F6, $F7:
+      $F4, $F5, $F6, $F7:
       begin
-        IAPU.WaitAddress2 := IAPU.WaitAddress1;
-        IAPU.WaitAddress1 := IAPU.PC;
-        Result := IAPU.RAM[Address];
+         IAPU.WaitAddress2 := IAPU.WaitAddress1;
+         IAPU.WaitAddress1 := IAPU.PC;
+         Result := IAPU.RAM[Address];
       end;
-    $FD, $FE, $FF:
+      $FD, $FE, $FF:
       begin
-        r := IAPU.RAM[Address] and 15;
-        IAPU.WaitAddress2 := IAPU.WaitAddress1;
-        IAPU.WaitAddress1 := IAPU.PC;
-        IAPU.RAM[Address] := 0;
-        Result := r;
+         r := IAPU.RAM[Address] and 15;
+         IAPU.WaitAddress2 := IAPU.WaitAddress1;
+         IAPU.WaitAddress1 := IAPU.PC;
+         IAPU.RAM[Address] := 0;
+         Result := r;
       end;
-  else
-    Result := IAPU.RAM[Address];
-  end;
+      else
+         Result := IAPU.RAM[Address];
+   end;
 end;
 
 function APUGetByteDP(Address: Byte): Byte;
 begin
-  if IAPU.DirectPage = IAPU.RAM then
-    Result := APUGetByte(Address)
-  else
-    Result := IAPU.DirectPage[Address];
+   if IAPU.DirectPage = IAPU.RAM then
+      Result := APUGetByte(Address)
+   else
+      Result := IAPU.DirectPage[Address];
 end;
 
 procedure APUUnpackStatus;
 begin
-  IAPU.Zero     := ((IAPU.Registers.P and APU_ZERO_FLAG) = 0) or ((IAPU.Registers.P and APU_NEGATIVE_FLAG) <> 0);
-  ICPU.Carry    := (IAPU.Registers.P and APU_CARRY_FLAG) <> 0;
-  IAPU.Overflow := (IAPU.Registers.P and APU_OVERFLOW_FLAG) <> 0;
+   IAPU.Carry := (IAPU.Registers.P and APU_CARRY_FLAG) <> 0;
+   IAPU.Zero := Ord((IAPU.Registers.P and APU_ZERO_FLAG) = 0);
+   IAPU.Overflow := (IAPU.Registers.P and APU_OVERFLOW_FLAG) <> 0;
+   IAPU.Negative := (IAPU.Registers.P and APU_NEGATIVE_FLAG) shr 7;
+
+   if (IAPU.Registers.P and APU_DIRECT_PAGE_FLAG) <> 0 then
+      IAPU.DirectPage := @IAPU.RAM[$100]
+   else
+      IAPU.DirectPage := IAPU.RAM;
 end;
 
+{
+  APUPackStatus
+  ------------------------------------------------------------------------------
+  Pega as flags de trabalho individuais da estrutura IAPU e as combina para
+  formar o byte de 8 bits do registrador de status 'P'.
+}
 procedure APUPackStatus;
 begin
-  ICPU.Registers.P := ICPU.Registers.P and not (APU_ZERO_FLAG or APU_NEGATIVE_FLAG or APU_CARRY_FLAG or APU_OVERFLOW_FLAG);
-  ICPU.Registers.P := ICPU.Registers.P or Ord(IAPU.Carry) or (Ord(not IAPU.Zero) shl 1) or (IAPU.Zero and $80) or (Ord(IAPU.Overflow) shl 6);
+   // A montagem do registrador P é feita bit a bit, usando as flags de trabalho.
+   // Cada flag é convertida para 0 ou 1 e deslocada para sua posição correta no byte.
+   IAPU.Registers.P :=  // Bit 0: Carry Flag (C)
+                        Ord(IAPU.Carry) or
+
+                        // Bit 1: Zero Flag (Z) - É INVERTIDA no registrador P.
+                        // Se IAPU.Zero for 0, o bit da flag deve ser 1. Se IAPU.Zero for 1, o bit deve ser 0.
+                        (Ord(IAPU.Zero = 0) shl 1) or
+
+                        // Bit 2: Interrupt Enable Flag (I) - Preservada
+                        (IAPU.Registers.P and APU_INTERRUPT_FLAG) or
+
+                        // Bit 3: Half Carry Flag (H) - Preservada
+                        (IAPU.Registers.P and APU_HALF_CARRY_FLAG) or
+
+                        // Bit 4: Break Flag (B) - Preservada
+                        (IAPU.Registers.P and APU_BREAK_FLAG) or
+
+                        // Bit 5: Direct Page Flag (P)
+                        (Ord(IAPU.DirectPage = @IAPU.RAM[$100]) shl 5) or
+
+                        // Bit 6: Overflow Flag (V)
+                        (Ord(IAPU.Overflow) shl 6) or
+
+                        // Bit 7: Negative Flag (N)
+                        (IAPU.Negative shl 7);
 end;
 
 end.

@@ -19,7 +19,10 @@ procedure DSPProcess(cycles: Cardinal);
 procedure DSPStereo(var l, r: Integer);
 
 // Procedimento para resetar o estado do DSP.
-procedure ResetDSP;
+procedure ResetAPUDSP;
+
+procedure ResetSound(clear_registers: Boolean);
+procedure SetEchoEnable(val: Byte);
 
 implementation
 
@@ -335,7 +338,7 @@ begin
       attackTab[i] := rateTab[i * 2 + 1];
 
    // Reseta o estado do DSP para os valores padrão
-   ResetDSP;
+   ResetAPUDSP;
 end;
 
 // *****************************************************
@@ -746,11 +749,11 @@ begin
 end;
 
 {
-  ResetDSP
+  ResetAPUDSP
   ------------------------------------------------------------------------------
   Reseta todas as variáveis de estado do DSP para seus valores iniciais.
 }
-procedure ResetDSP;
+procedure ResetAPUDSP;
 var
    i: Integer;
 begin
@@ -789,6 +792,19 @@ begin
       if voice > 7 then voice := voice - 7;
          dspRegs[reg](voice, data);
    end;
+end;
+
+procedure ResetSound(clear_registers: Boolean);
+begin
+   // No código C, esta função reseta os canais de som.
+   // A nossa ResetDSP já faz isso, mas podemos adicionar lógica específica se necessário.
+   // Por enquanto, um placeholder é suficiente.
+end;
+
+procedure SetEchoEnable(val: Byte);
+begin
+   // Esta função controla a flag de eco.
+   disEcho := Ord((val and ECHO_ENABLE) = 0);
 end;
 
 end.

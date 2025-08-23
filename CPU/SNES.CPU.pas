@@ -27,15 +27,15 @@ procedure ClearIRQSource(source: Cardinal);
 implementation
 
 uses
-  System.SysUtils,
-  SNES.Memory,
-  SNES.CPU.Opcodes,
-  SNES.PPU,
-  SNES.GFX,
-  SNES.APU,
-  SNES.DMA;
-//  SNES.Chips.SuperFX,
-//  SNES.Chips.SA1;
+   System.SysUtils,
+   SNES.Memory,
+   SNES.CPU.Opcodes,
+   SNES.PPU,
+   SNES.GFX,
+   SNES.APU,
+   SNES.DMA;
+//   SNES.Chips.SuperFX,
+//   SNES.Chips.SA1;
 
 
 procedure ForceShutdown; inline;
@@ -275,7 +275,7 @@ begin
 
       until False; // Loop infinito, quebra com `Break`
 
-      ICPU.Registers.PCw := IAPU.PC - IAPU.RAM; // Sincronização APU
+      ICPU.Registers.PCw.xPBPC := NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM); // Sincronização APU
 
       if not finishedFrame then
       begin

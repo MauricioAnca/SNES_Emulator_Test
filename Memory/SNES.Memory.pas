@@ -73,31 +73,31 @@ end;
 
 procedure AddNumCyclesInMemAccess(cycles: Integer);
 begin
-   if not Settings.GetSetDMATimingHacks and (CPU.InDMA or IPPU.HDMA) then
+   if not Settings.GetSetDMATimingHacks and (CPU.InDMA or (IPPU.HDMA <> 0)) then
       Exit;
-  CPU.Cycles := CPU.Cycles + cycles;
+   CPU.Cycles := CPU.Cycles + cycles;
 end;
 
 procedure AddCyclesInMemAccess(address: Cardinal);
 begin
-  AddNumCyclesInMemAccess(memory_speed(address));
+   AddNumCyclesInMemAccess(memory_speed(address));
 end;
 
 procedure AddCyclesX2InMemAccess(address: Cardinal);
 begin
-  AddNumCyclesInMemAccess(memory_speed(address) shl 1);
+   AddNumCyclesInMemAccess(memory_speed(address) shl 1);
 end;
 
 function AllASCII(b: PByte; size: Integer): Boolean;
 var
-  i: Integer;
+   i: Integer;
 begin
-  for i := 0 to size - 1 do
-  begin
-    if (b[i] < 32) or (b[i] > 126) then
-      Exit(False);
-  end;
-  Result := True;
+   for i := 0 to size - 1 do
+   begin
+      if (b[i] < 32) or (b[i] > 126) then
+         Exit(False);
+   end;
+   Result := True;
 end;
 
 function ScoreHiROM(skip_header: Boolean; romoff: Integer): Integer;
