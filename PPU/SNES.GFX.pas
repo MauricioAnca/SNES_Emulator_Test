@@ -210,24 +210,77 @@ begin
   end;
 end;
 
+procedure InitDisplay;
+var
+   h: Integer;
+   safety: Integer;
+begin
+   h := MAX_SNES_HEIGHT; // Usa a altura máxima para garantir buffer suficiente
+   safety := 32;         // Bytes de segurança para evitar overflows
+
+   GFX.Pitch := MAX_SNES_WIDTH * 2; // 2 bytes por pixel (RGB565)
+
+   // Aloca memória para cada um dos buffers gráficos
+   // Usamos GetMem para alocar blocos de memória não inicializada
+   GetMem(GFX.Screen_buffer, GFX.Pitch * h + safety);
+   GetMem(GFX.SubScreen_buffer, GFX.Pitch * h + safety);
+   GetMem(GFX.ZBuffer_buffer, (GFX.Pitch div 2) * h + safety); // Z-Buffer tem 1 byte por pixel
+   GetMem(GFX.SubZBuffer_buffer, (GFX.Pitch div 2) * h + safety);
+
+   // Zera os buffers para garantir que comecem limpos
+   FillChar(GFX.Screen_buffer^, GFX.Pitch * h + safety, 0);
+   FillChar(GFX.SubScreen_buffer^, GFX.Pitch * h + safety, 0);
+   FillChar(GFX.ZBuffer_buffer^, (GFX.Pitch div 2) * h + safety, 0);
+   FillChar(GFX.SubZBuffer_buffer^, (GFX.Pitch div 2) * h + safety, 0);
+
+   // Aponta os ponteiros de trabalho para o início da área útil dos buffers (após a margem de segurança)
+   GFX.Screen := GFX.Screen_buffer + safety;
+   GFX.SubScreen := GFX.SubScreen_buffer + safety;
+   GFX.ZBuffer := GFX.ZBuffer_buffer + safety;
+   GFX.SubZBuffer := GFX.SubZBuffer_buffer + safety;
+end;
+
+// --- CORREÇÃO: Procedimento para Liberar a Memória Alocada ---
+procedure DeinitDisplay;
+begin
+  if Assigned(GFX.Screen_buffer) then
+    FreeMem(GFX.Screen_buffer);
+  if Assigned(GFX.SubScreen_buffer) then
+    FreeMem(GFX.SubScreen_buffer);
+  if Assigned(GFX.ZBuffer_buffer) then
+    FreeMem(GFX.ZBuffer_buffer);
+  if Assigned(GFX.SubZBuffer_buffer) then
+    FreeMem(GFX.SubZBuffer_buffer);
+
+  // Zera os ponteiros para evitar o uso de memória liberada
+  FillChar(GFX, SizeOf(TSGFX), 0);
+end;
+
 // --- Implementações Públicas ---
 
 function InitGFX: Boolean;
-var
-  r, g, b: Cardinal;
 begin
-  // Porte da função InitGFX de `gfx.c`, que inicializa tabelas de lookup.
-  GFX.Pitch := MAX_SNES_WIDTH * 2;
-  GFX.RealPitch := GFX.Pitch;
-  GFX.ZPitch := GFX.Pitch shr 1;
-  // ...
-  Result := True;
+   InitDisplay;
+
+   // O resto da sua função InitGFX original estava correto e agora vai funcionar,
+   // pois os ponteiros de buffer não são mais nulos.
+   GFX.RealPitch := GFX.Pitch;
+   GFX.ZPitch := MAX_SNES_WIDTH;
+   GFX.Delta := (NativeInt(GFX.SubScreen) - NativeInt(GFX.Screen)) shr 1;
+   GFX.DepthDelta := NativeInt(GFX.SubZBuffer) - NativeInt(GFX.ZBuffer);
+
+   // GFX.Zero agora aponta para um endereço válido
+   if Assigned(GFX.ZBuffer) then
+      GFX.Zero := @GFX.ZBuffer[0];
+
+   Result := True;
 end;
 
 procedure DeinitGFX;
 begin
-  // Porte da função DeinitGFX de `gfx.c`, que libera memória.
+   DeinitDisplay;
 end;
+
 
 procedure BuildDirectColourMaps;
 var
