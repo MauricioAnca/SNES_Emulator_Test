@@ -54,7 +54,7 @@ begin
       Exit(False);
    end;
 
-   InitAPUDSP; // Chama a inicialização do DSP
+   InitDSP; // Chama a inicialização do DSP
    Result := True;
 end;
 
@@ -81,7 +81,7 @@ begin
    for i := 1 to 255 do
       Move(IAPU.RAM^, IAPU.RAM[i shl 8], $100);
 
-   FillChar(APU, SizeOf(SAPU), 0);
+   FillChar(APU, SizeOf(TSAPU), 0);
    FillChar(APU.OutPorts, SizeOf(APU.OutPorts), 0);
 
    IAPU.DirectPage := IAPU.RAM;
@@ -295,14 +295,14 @@ end;
 
 procedure APUUnpackStatus;
 begin
-  IAPU.Zero     := ((IAPU.Registers.P and APU_ZERO) = 0) or ((IAPU.Registers.P and APU_NEGATIVE) <> 0);
-  ICPU.Carry    := (IAPU.Registers.P and APU_CARRY) <> 0;
-  IAPU.Overflow := (IAPU.Registers.P and APU_OVERFLOW) <> 0;
+  IAPU.Zero     := ((IAPU.Registers.P and APU_ZERO_FLAG) = 0) or ((IAPU.Registers.P and APU_NEGATIVE_FLAG) <> 0);
+  ICPU.Carry    := (IAPU.Registers.P and APU_CARRY_FLAG) <> 0;
+  IAPU.Overflow := (IAPU.Registers.P and APU_OVERFLOW_FLAG) <> 0;
 end;
 
 procedure APUPackStatus;
 begin
-  ICPU.Registers.P := ICPU.Registers.P and not (APU_ZERO or APU_NEGATIVE or APU_CARRY or APU_OVERFLOW);
+  ICPU.Registers.P := ICPU.Registers.P and not (APU_ZERO_FLAG or APU_NEGATIVE_FLAG or APU_CARRY_FLAG or APU_OVERFLOW_FLAG);
   ICPU.Registers.P := ICPU.Registers.P or Ord(IAPU.Carry) or (Ord(not IAPU.Zero) shl 1) or (IAPU.Zero and $80) or (Ord(IAPU.Overflow) shl 6);
 end;
 

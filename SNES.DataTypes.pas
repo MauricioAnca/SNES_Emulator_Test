@@ -133,6 +133,186 @@ const
 
    CHIP_NUMCHIPS   = $ff;
 
+   // --- Constantes de Flags do Processador SPC700 ---
+   APU_CARRY_FLAG        = $01; // Bit 0
+   APU_ZERO_FLAG         = $02; // Bit 1
+   APU_INTERRUPT_FLAG    = $04; // Bit 2
+   APU_HALF_CARRY_FLAG   = $08; // Bit 3
+   APU_BREAK_FLAG        = $10; // Bit 4
+   APU_DIRECT_PAGE_FLAG  = $20; // Bit 5
+   APU_OVERFLOW_FLAG     = $40; // Bit 6
+   APU_NEGATIVE_FLAG     = $80; // Bit 7
+
+   // --- Constantes de Estado do Envelope de Som (para TVoiceMix.eMode) ---
+   SOUND_RELEASE                 = 0;
+   SOUND_ATTACK                  = 1;
+   SOUND_DECAY                   = 2;
+   SOUND_SUSTAIN                 = 3;
+   SOUND_GAIN                    = 4;
+   SOUND_INCREASE_LINEAR         = 5;
+   SOUND_INCREASE_BENT_LINE      = 6;
+   SOUND_DECREASE_LINEAR         = 7;
+   SOUND_DECREASE_EXPONENTIAL    = 8;
+
+   // --- Constantes de Flags de Estado do Canal de Voz (para TVoiceMix.mFlg) ---
+   MFLG_MUTE = $01;      // Silenciar canal
+   MFLG_KOFF = $02;      // Flag: Key Off foi acionado para este canal
+   MFLG_OFF  = $04;      // Flag: Canal está completamente inativo
+   MFLG_END  = $08;      // Flag: O último bloco da amostra foi alcançado
+   MFLG_SSRC = $10;      // Flag: Iniciar/Reiniciar a fonte da amostra (Start Source)
+
+   // --- Constantes de Timing e Precisão ---
+   E_SHIFT = 4;
+   FIXED_POINT_SHIFT = 16;
+   FIXED_POINT_REMAINDER = (1 shl FIXED_POINT_SHIFT) - 1;
+   pitchAdj = 2147727;
+   dspRate = 32000;
+
+   // --- Constantes de Envelope ---
+   D_MIN = 0;
+   A_GAIN = 1 shl E_SHIFT;
+   D_ATTACK = (128 * A_GAIN) - 1;
+   D_BENT = (128 * A_GAIN * 3) div 4;
+   A_LIN = (128 * A_GAIN) div 64;
+   A_NOATT = 0; // Para taxa de ataque '15' (infinita)
+
+   // --- Constantes de Registradores DSP ---
+   APU_VOL_L = $00;
+   APU_VOL_R = $01;
+   APU_P_L = $02;
+   APU_P_H = $03;
+   APU_SRCN = $04;
+   APU_ADSR1 = $05;
+   APU_ADSR2 = $06;
+   APU_GAIN = $07;
+   APU_ENVX = $08;
+   APU_OUTX = $09;
+   APU_MVOL_L = $0C;
+   APU_MVOL_R = $1C;
+   APU_EVOL_L = $2C;
+   APU_EVOL_R = $3C;
+   APU_KON = $4C;
+   APU_KOF = $5C;
+   APU_FLG = $6C;
+   APU_ENDX = $7C;
+   APU_EFB = $0D;
+   APU_PMON = $2D;
+   APU_NON = $3D;
+   APU_EON = $4D;
+   APU_DIR = $5D;
+   APU_ESA = $6D;
+   APU_EDL = $7D;
+   APU_C0 = $0F;
+   APU_C1 = $1F;
+   APU_C2 = $2F;
+   APU_C3 = $3F;
+   APU_C4 = $4F;
+   APU_C5 = $5F;
+   APU_C6 = $6F;
+   APU_C7 = $7F;
+
+   // --- Constantes de Flags ---
+   NOISE_ENABLE = $20;
+   ECHO_ENABLE = $80;
+
+
+   // Porte das tabelas de `globals.c`
+   OpLengthsM1X1_Data: array[0..255] of Byte = (
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      3, 2, 4, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      1, 2, 2, 2, 3, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4,
+      1, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      2, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4);
+
+   OpLengthsM0X0_Data: array[0..255] of Byte = (
+      {      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f }
+      { 00 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 10 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 20 } 3, 2, 4, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 30 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 40 } 1, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 50 } 2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4,
+      { 60 } 1, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 70 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 80 } 2, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 90 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { a0 } 3, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { b0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { c0 } 3, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { d0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { e0 } 3, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { f0 } 2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4);
+
+   OpLengthsM0X1_Data: array[0..255] of Byte = (
+      {      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f }
+      { 00 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 10 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 20 } 3, 2, 4, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 30 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 40 } 1, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 50 } 2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4,
+      { 60 } 1, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 70 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 80 } 2, 2, 3, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 90 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { a0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { b0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { c0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { d0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { e0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { f0 } 2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4);
+
+   OpLengthsM1X0_Data: array[0..255] of Byte = (
+      {      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f }
+      { 00 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { 10 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 20 } 3, 2, 4, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { 30 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 40 } 1, 2, 2, 2, 3, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { 50 } 2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4,
+      { 60 } 1, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { 70 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { 80 } 2, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { 90 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { a0 } 3, 2, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { b0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { c0 } 3, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { d0 } 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+      { e0 } 3, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4,
+      { f0 } 2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4);
+
+
+   APUCycleLengths: array[0..255] of Byte = (
+      {      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e,  f }
+      { 00 } 2, 8, 4, 5, 3, 4, 3, 6, 2, 6, 5, 4, 5, 4, 6,  8,
+      { 10 } 2, 8, 4, 5, 4, 5, 5, 6, 5, 5, 6, 5, 2, 2, 4,  6,
+      { 20 } 2, 8, 4, 5, 3, 4, 3, 6, 2, 6, 5, 4, 5, 4, 5,  4,
+      { 30 } 2, 8, 4, 5, 4, 5, 5, 6, 5, 5, 6, 5, 2, 2, 3,  8,
+      { 40 } 2, 8, 4, 5, 3, 4, 3, 6, 2, 6, 4, 4, 5, 4, 6,  6,
+      { 50 } 2, 8, 4, 5, 4, 5, 5, 6, 5, 5, 4, 5, 2, 2, 4,  3,
+      { 60 } 2, 8, 4, 5, 3, 4, 3, 6, 2, 6, 4, 4, 5, 4, 5,  5,
+      { 70 } 2, 8, 4, 5, 4, 5, 5, 6, 5, 5, 5, 5, 2, 2, 3,  6,
+      { 80 } 2, 8, 4, 5, 3, 4, 3, 6, 2, 6, 5, 4, 5, 2, 4,  5,
+      { 90 } 2, 8, 4, 5, 4, 5, 5, 6, 5, 5, 5, 5, 2, 2, 12, 5,
+      { a0 } 3, 8, 4, 5, 3, 4, 3, 6, 2, 6, 4, 4, 5, 2, 4,  4,
+      { b0 } 2, 8, 4, 5, 4, 5, 5, 6, 5, 5, 5, 5, 2, 2, 3,  4,
+      { c0 } 3, 8, 4, 5, 4, 5, 4, 7, 2, 5, 6, 4, 5, 2, 4,  9,
+      { d0 } 2, 8, 4, 5, 5, 6, 6, 7, 4, 5, 4, 5, 2, 2, 6,  3,
+      { e0 } 2, 8, 4, 5, 3, 4, 3, 6, 2, 4, 5, 3, 4, 3, 4,  3,
+      { f0 } 2, 8, 4, 5, 4, 5, 5, 6, 3, 4, 5, 4, 2, 2, 4,  3);
+
+
 type
    // de 65c816.h - Estruturas básicas da CPU
    TPair = record
@@ -400,9 +580,11 @@ type
       Executing: Boolean;
       Carry: Boolean;
       Overflow: Boolean;
+      OpenBus: Byte;
       _pad1: array[0..2] of Byte;
       Bit: Byte;
       Zero: Byte;
+      Negative: Byte;
       OneCycle: Integer;
       Address: Cardinal;
       WaitCounter: Cardinal;
@@ -547,7 +729,45 @@ type
       output: array[0..511] of Byte;
       // ... muitos outros campos...
    end;
-  // Outras TSDSPx seriam definidas de forma similar.
+
+   {
+   TVoiceMix
+   ----------------------------------------------------------------------------
+   Este record contém o estado completo de um único canal de voz do S-DSP.
+   Cada um dos 8 canais de áudio do SNES terá uma instância deste record.
+   }
+   TVoiceMix = record
+      // --- PARÂMETROS LIDOS DOS REGISTRADORES (Cópia local para acesso rápido) ---
+      mVolL, mVolR: Byte;     // Volume Esquerdo e Direito do canal ($x0, $x1)
+      mPitchL, mPitchH: Byte;   // Bytes baixo e alto do Pitch ($x2, $x3)
+      mSRCN: Byte;            // Número da Fonte da amostra (índice no diretório) ($x4)
+      mADSR1, mADSR2: Byte;   // Registradores de configuração do envelope ADSR ($x5, $x6)
+      mGAIN: Byte;            // Registrador de configuração do envelope GAIN ($x7)
+
+      // --- ESTADO DO ENVELOPE (ADSR/GAIN) ---
+      eMode: Byte;            // Modo atual do envelope (ATTACK, DECAY, GAIN, RELEASE, etc.)
+      eRIdx: Byte;            // Índice para a tabela de taxas (rateTab)
+      eRate: Cardinal;        // Taxa de mudança do envelope (pré-calculada a partir de eRIdx)
+      eAdj: Cardinal;         // Ajuste do envelope (para curvas lineares, exponenciais, etc.)
+      eVal: Integer;          // Valor atual do envelope (em formato de ponto fixo)
+      eDest: Integer;         // Valor de destino que o envelope está tentando alcançar
+      eDec: Integer;          // Contador de decremento do Envelope
+
+      // --- ESTADO DA AMOSTRA (BRR - Bit Rate Reduction) ---
+      bStart: Cardinal;       // Endereço de início da amostra na RAM da APU
+      bCurrAddr: Cardinal;    // Endereço do bloco BRR sendo decodificado atualmente
+      bLoopAddr: Cardinal;    // Endereço do ponto de loop (se houver)
+      bPos: Cardinal;         // Posição de leitura atual na amostra (formato ponto fixo 32.16)
+      bLoop: Boolean;         // Flag: este bloco de amostra tem um ponto de loop?
+      bPrev1, bPrev2: SmallInt; // As duas últimas amostras decodificadas (para o filtro de previsão)
+      bBuf: array[0..15] of SmallInt; // Buffer com as 16 amostras decodificadas do bloco BRR atual
+
+      // --- ESTADO GERAL DO CANAL ---
+      mFlg: Byte;             // Flags de estado do canal (MUTE, KOFF, OFF, END, SSRC)
+      mOrgP: Cardinal;        // Valor do Pitch original (14-bits) lido dos registradores
+      mRate: Cardinal;        // Taxa de passo final para a reprodução da amostra (após modulação)
+      mOrgRate: Cardinal;     // Taxa de passo calculada a partir do mOrgP (antes da modulação)
+   end;
 
   // de sa1.h
    TSSA1Registers = packed record

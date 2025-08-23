@@ -6,263 +6,10 @@ uses
    SNES.DataTypes;
 
 // --- Funções Públicas da Unit ---
-procedure APUExecute;
-procedure InitializeAPUOpcodes;
+procedure APUMainLoop;
+procedure ResetAPU;
+procedure InitSPC700;
 
-// --- Opcodes ---
-procedure Apu00; // NOP
-procedure Apu01;
-procedure Apu02; // SET1 dp.0
-procedure Apu03;
-procedure Apu04;
-procedure Apu05;
-procedure Apu06;
-procedure Apu07;
-procedure Apu08;
-procedure Apu09; // OR dp(dest),dp(src)
-procedure Apu0A; // OR1 C,membit
-procedure Apu0B; // ASL dp
-procedure Apu0C; // ASL abs
-procedure Apu0D; // PUSH PSW
-procedure Apu0E; // TSET1 abs
-procedure Apu0F; // BRK
-procedure Apu10; // BPL
-procedure Apu11;
-procedure Apu12; // CLR1 dp.0
-procedure Apu13;
-procedure Apu14;
-procedure Apu15;
-procedure Apu16;
-procedure Apu17;
-procedure Apu18; // OR dp,#00
-procedure Apu19; // OR (X),(Y)
-procedure Apu1A; // DECW dp
-procedure Apu1B; // ASL dp+X
-procedure Apu1C; // ASL A
-procedure Apu1D; // DEC X
-procedure Apu1E; // CMP X,abs
-procedure Apu1F; // JMP (abs+X)
-procedure Apu20; // CLRP
-procedure Apu21;
-procedure Apu22; // SET1 dp.1
-procedure Apu23;
-procedure Apu24;
-procedure Apu25;
-procedure Apu26;
-procedure Apu27;
-procedure Apu28;
-procedure Apu29; // AND dp(dest),dp(src)
-procedure Apu2B; // ROL dp
-procedure Apu2C; // ROL abs
-procedure Apu2D; // PUSH A
-procedure Apu2E; // CBNE dp,rel
-procedure Apu2F; // BRA rel
-procedure Apu31;
-procedure Apu32; // CLR1 dp.1
-procedure Apu33;
-procedure Apu34;
-procedure Apu35;
-procedure Apu36;
-procedure Apu37;
-procedure Apu38; // AND dp,#00
-procedure Apu39; // AND (X),(Y)
-procedure Apu3A; // INCW dp
-procedure Apu3B; // ROL dp+X
-procedure Apu3C; // ROL A
-procedure Apu3D; // INC X
-procedure Apu3E; // CMP X,dp
-procedure Apu3F; // CALL absolute
-procedure Apu40; // SETP
-procedure Apu41;
-procedure Apu42; // SET1 dp.2
-procedure Apu43;
-procedure Apu44;
-procedure Apu45;
-procedure Apu46;
-procedure Apu47;
-procedure Apu48;
-procedure Apu49; // EOR dp(dest),dp(src)
-procedure Apu4A; // AND1 C,membit
-procedure Apu4B; // LSR dp
-procedure Apu4C; // LSR abs
-procedure Apu4D; // PUSH X
-procedure Apu4E; // TCLR1 abs
-procedure Apu4F; // PCALL $XX
-procedure Apu50; // BVC
-procedure Apu51;
-procedure Apu52; // CLR1 dp.2
-procedure Apu53;
-procedure Apu54;
-procedure Apu55;
-procedure Apu56;
-procedure Apu57;
-procedure Apu58; // EOR dp,#00
-procedure Apu59; // EOR (X),(Y)
-procedure Apu5A; // CMPW YA,dp
-procedure Apu5B; // LSR dp+X
-procedure Apu5C; // LSR A
-procedure Apu5D; // MOV X,A
-procedure Apu5E; // CMP Y,abs
-procedure Apu5F; // JMP abs
-procedure Apu60; // CLRC
-procedure Apu61;
-procedure Apu62; // SET1 dp.3
-procedure Apu63;
-procedure Apu64;
-procedure Apu65;
-procedure Apu66;
-procedure Apu67;
-procedure Apu68;
-procedure Apu69; // CMP dp(dest),dp(src)
-procedure Apu6A; // AND1 C,membit
-procedure Apu6B; // ROR dp
-procedure Apu6C; // ROR abs
-procedure Apu6D; // PUSH Y
-procedure Apu6E; // DBNZ dp,rel
-procedure Apu6F; // RET
-procedure Apu70; // BVS
-procedure Apu71;
-procedure Apu72; // CLR1 dp.3
-procedure Apu73;
-procedure Apu74;
-procedure Apu75;
-procedure Apu76;
-procedure Apu77;
-procedure Apu78; // CMP dp,#00
-procedure Apu79; // CMP (X),(Y)
-procedure Apu7A; // ADDW YA,dp
-procedure Apu7B; // ROR dp+X
-procedure Apu7C; // ROR A
-procedure Apu7D; // MOV A,X
-procedure Apu7E; // CMP Y,dp
-procedure Apu7F; // RETI
-
-procedure Apu81;
-procedure Apu82; // SET1 dp.4
-procedure Apu83;
-
-
-
-
-
-
-
-
-
-
-
-
-
-procedure Apu91;
-procedure Apu92; // CLR1 dp.4
-procedure Apu93;
-
-
-
-
-
-
-
-
-
-
-
-
-procedure ApuA0; // EI
-procedure ApuA1;
-procedure ApuA2; // SET1 dp.5
-procedure ApuA3;
-procedure ApuA4; // SBC A,dp
-procedure ApuA5; // SBC A,abs
-procedure ApuA6; // SBC A,(X)
-procedure ApuA7; // SBC A,(dp+X)
-procedure ApuA8; // SBC A,#00
-procedure ApuA9; // SBC dp(dest),dp(src)
-procedure ApuAA; // MOV1 C,membit
-procedure ApuAB; // INC dp
-procedure ApuAC; // INC abs
-procedure ApuAD; // CMP Y,#00
-procedure ApuAE; // POP A
-procedure ApuAF; // MOV (X)+, A
-procedure ApuB0; // BCS
-procedure ApuB1;
-procedure ApuB2; // CLR1 dp.5
-procedure ApuB3;
-procedure ApuB4; // SBC A,dp+X
-procedure ApuB5; // SBC A,abs+X
-procedure ApuB6; // SBC A,abs+Y
-procedure ApuB7; // SBC A,(dp)+Y
-procedure ApuB8; // SBC dp,#00
-procedure ApuB9; // SBC (X),(Y)
-procedure ApuBA; // MOVW YA,dp
-procedure ApuBB; // INC dp+X
-procedure ApuBC; // INC A
-procedure ApuBD; // MOV SP,X
-procedure ApuBE; // DAS
-procedure ApuBF; // MOV A,(X)+
-procedure ApuC0; // DI
-procedure ApuC1;
-procedure ApuC2; // SET1 dp.6
-procedure ApuC3;
-procedure ApuC4; // MOV dp,A
-procedure ApuC5; // MOV abs,A
-procedure ApuC6; // MOV (X), A
-procedure ApuC7; // MOV (dp+X),A
-procedure ApuC8; // CMP X,#00
-procedure ApuC9; // MOV abs,X
-procedure ApuCA; // MOV1 membit,C
-procedure ApuCB; // MOV dp,Y
-procedure ApuCC; // MOV abs,Y
-procedure ApuCD; // MOV X,#00
-procedure ApuCE; // POP X
-procedure ApuCF; // MUL YA
-procedure ApuD0; // BNE
-procedure ApuD1;
-procedure ApuD2; // CLR1 dp.6
-procedure ApuD3;
-procedure ApuD4;
-procedure ApuD5;
-procedure ApuD6;
-procedure ApuD7;
-procedure ApuD8; // MOV dp,X
-procedure ApuD9; // MOV dp+Y,X
-procedure ApuDA; // MOVW dp,YA
-procedure ApuDB; // MOV dp+X,Y
-procedure ApuDC; // DEC Y
-procedure ApuDD; // MOV A,Y
-procedure ApuDE; // CBNE dp+X,rel
-procedure ApuDF; // DAA
-procedure ApuE0; // CLRV
-procedure ApuE1;
-procedure ApuE2; // SET1 dp.7
-procedure ApuE3;
-procedure ApuE4; // MOV A,dp
-procedure ApuE5; // MOV A,abs
-procedure ApuE6; // MOV A,(X)
-procedure ApuE7; // MOV A,(dp+X)
-procedure ApuE8; // MOV A,#00
-procedure ApuE9; // MOV X,abs
-procedure ApuEA; // NOT1 membit
-procedure ApuEB; // MOV Y,dp
-procedure ApuEC; // MOV Y,abs
-procedure ApuED; // NOTC
-procedure ApuEE; // POP Y
-procedure ApuEF_FF; // SLEEP / STOP
-procedure ApuF0; // BEQ
-procedure ApuF1;
-procedure ApuF2; // CLR1 dp.7
-procedure ApuF3;
-procedure ApuF4; // MOV A,dp+X
-procedure ApuF5; // MOV A,abs+X
-procedure ApuF6; // MOV A,abs+Y
-procedure ApuF7; // MOV A,(dp)+Y
-procedure ApuF8; // MOV X,dp
-procedure ApuF9; // MOV X,dp+Y
-procedure ApuFA; // MOV dp(dest),dp(src)
-procedure ApuFB; // MOV Y,dp+X
-procedure ApuFC; // INC Y
-procedure ApuFD; // MOV Y,A
-procedure ApuFE; // DBNZ Y,rel
 
 implementation
 
@@ -273,6 +20,11 @@ uses
    SNES.CPU,
    SNES.APU,
    SNES.APU.DSP;
+
+const
+   ACC_READ = 0;
+   ACC_WRITE = 1;
+   ACC_READ_WRITE = 2;
 
 var
    // Variáveis de trabalho para os opcodes
@@ -286,1959 +38,2999 @@ var
    // Tabela de ponteiros de função para os opcodes do SPC700
    ApuOpcodes: array [0 .. 255] of TOpcodeFunc;
 
-procedure APUExecute;
-var
-   Op: Byte;
+
+//**********************************************************************************
+//--- Funções Auxiliares (Modos de Endereçamento, Acesso à Memória, Pilha, etc.) ---
+//**********************************************************************************
+
+
+// --- Funções de Acesso à Memória da APU ---
+
+{
+  APUGetByte
+  ------------------------------------------------------------------------------
+  Lê um byte de qualquer endereço na RAM da APU (0-$FFFF).
+}
+function APUGetByte(Address: Cardinal): Byte;
 begin
-   // Se a APU não estiver em execução, apenas sincroniza os contadores de ciclo e sai.
-   if not IAPU.Executing then
-   begin
-      APU.Cycles := APUGetCPUCycles;
-      Exit;
-   end;
-
-   // Loop principal do SPC700. Ele continuará executando instruções até que o contador de ciclos da APU alcance (ou ultrapasse) o contador de ciclos da CPU principal.
-   while APU.Cycles < APUGetCPUCycles do
-   begin
-      // Lê o opcode (byte) para o qual o ponteiro do Program Counter (IAPU.PC) aponta.
-      Op := IAPU.PC^;
-
-      // Adiciona o número de ciclos que esta instrução consumirá.
-      // O array APUCycles foi preenchido com os tempos corretos durante a inicialização.
-      APU.Cycles := APU.Cycles + APUCycles[Op];
-
-      // Usa o opcode como índice para a tabela de opcodes e chama o procedimento correspondente.
-      ApuOpcodes[Op]();
-   end;
-end;
-
-// ROTINAS AUXILIARES INLINE (Tradução de spc700.c e spc700.h)
-function OP1: Byte; inline;
-begin
-   Result := IAPU.PC[1];
-end;
-
-function OP2: Byte; inline;
-begin
-   Result := IAPU.PC[2];
-end;
-
-procedure APUShutdown; inline;
-begin
-   if Settings.Shutdown and ((IAPU.PC = IAPU.WaitAddress1) or (IAPU.PC = IAPU.WaitAddress2)) then
-   begin
-      if IAPU.WaitCounter = 0 then
+  case Address of
+    $F0..$FF: // Faixa de registradores I/O
       begin
-         if (APU.Cycles < EXT.NextAPUTimerPos) and (EXT.NextAPUTimerPos < CPU.Cycles) then
-            APU.Cycles := EXT.NextAPUTimerPos
-         else
-            if APU.Cycles < CPU.Cycles then
-               APU.Cycles := CPU.Cycles;
-         IAPU.Executing := False;
-      end
-      else
-         if IAPU.WaitCounter >= 2 then
-            IAPU.WaitCounter := 1
-         else
-            Dec(IAPU.WaitCounter);
-   end;
+        // A lógica de leitura de registradores é complexa e será tratada
+        // em uma função dedicada quando portarmos a unit SNES.APU.pas
+        // Por enquanto, lemos diretamente da RAM.
+        Result := IAPU.RAM[Address];
+      end;
+  else
+    Result := IAPU.RAM[Address];
+  end;
 end;
 
-procedure APUSetZN8(b: Byte); inline;
+{
+  APUSetByte
+  ------------------------------------------------------------------------------
+  Escreve um byte em qualquer endereço na RAM da APU (0-$FFFF).
+}
+procedure APUSetByte(val: Byte; Address: Cardinal);
 begin
-   IAPU.Zero := b = 0;
+  case Address of
+    $F0..$FF: // Faixa de registradores I/O
+      begin
+        // A lógica de escrita em registradores será tratada em SNES.APU.pas
+        // Por enquanto, escrevemos diretamente na RAM.
+        IAPU.RAM[Address] := val;
+      end;
+  else
+    IAPU.RAM[Address] := val;
+  end;
 end;
 
-procedure APUSetZN16(w: Word); inline;
+{
+  APUGetByteZ
+  ------------------------------------------------------------------------------
+  Lê um byte da Página Direta (Zero Page) da APU.
+  O endereço é mascarado para 8 bits e usado como um offset a partir do
+  ponteiro IAPU.DirectPage.
+}
+function APUGetByteZ(Address: Cardinal): Byte;
 begin
-   IAPU.Zero := w = 0;
+  Result := IAPU.DirectPage[Address and $FF];
 end;
 
-procedure SBC(var a: Byte; b: Byte); inline;
+{
+  APUSetByteZ
+  ------------------------------------------------------------------------------
+  Escreve um byte na Página Direta (Zero Page) da APU.
+}
+procedure APUSetByteZ(val: Byte; Address: Cardinal);
 begin
-   Int16 := SmallInt(a) - SmallInt(b) + Ord(IAPU.Carry) - 1;
-   IAPU.Carry := Int16 >= 0;
-   if (((a xor b) and $80) <> 0) and (((a xor Byte(Int16)) and $80) <> 0) then
+  IAPU.DirectPage[Address and $FF] := val;
+end;
+
+{
+  APUGetWord
+  ------------------------------------------------------------------------------
+  Lê uma palavra (16 bits) de qualquer endereço na RAM da APU, tratando
+  corretamente a ordem dos bytes (Little Endian).
+}
+function APUGetWord(Address: Cardinal): Word;
+var
+  l, h: Byte;
+begin
+  l := APUGetByte(Address);
+  h := APUGetByte(Address + 1);
+  Result := l or (h shl 8);
+end;
+
+{
+  APUSetWord
+  ------------------------------------------------------------------------------
+  Escreve uma palavra (16 bits) em qualquer endereço na RAM da APU.
+}
+procedure APUSetWord(val: Word; Address: Cardinal);
+begin
+  APUSetByte(val and $FF, Address);
+  APUSetByte(val shr 8, Address + 1);
+end;
+
+{
+  APUGetWordZ
+  ------------------------------------------------------------------------------
+  Lê uma palavra (16 bits) da Página Direta da APU, tratando o wrap-around
+  se a leitura começar em $FF.
+}
+function APUGetWordZ(Address: Cardinal): Word;
+var
+  l, h: Byte;
+begin
+  l := APUGetByteZ(Address);
+  h := APUGetByteZ(Address + 1);
+  Result := l or (h shl 8);
+end;
+
+{
+  APUSetWordZ
+  ------------------------------------------------------------------------------
+  Escreve uma palavra (16 bits) na Página Direta da APU.
+}
+procedure APUSetWordZ(val: Word; Address: Cardinal);
+begin
+  APUSetByteZ(val and $FF, Address);
+  APUSetByteZ(val shr 8, Address + 1);
+end;
+
+// --- Funções de Leitura de Operandos ---
+
+function Immediate(access: Integer): Byte;
+begin
+  Result := IAPU.PC^;
+  Inc(IAPU.PC);
+end;
+
+function ImmediateWord(access: Integer): Word;
+var
+  w: Word;
+begin
+  w := IAPU.PC^;
+  Inc(IAPU.PC);
+  w := w or (IAPU.PC^ shl 8);
+  Inc(IAPU.PC);
+  Result := w;
+end;
+
+// --- Modos de Endereçamento ---
+
+function Direct(access: Integer): Cardinal;
+begin
+  Result := Immediate(access);
+end;
+
+function Absolute(access: Integer): Cardinal;
+begin
+  Result := ImmediateWord(access);
+end;
+
+function DirectIndexedX(access: Integer): Cardinal;
+begin
+  Result := (IAPU.Registers.X + IAPU.PC^);
+  Inc(IAPU.PC);
+end;
+
+function DirectIndexedY(access: Integer): Cardinal;
+begin
+  Result := (IAPU.Registers.YA.Y + IAPU.PC^);
+  Inc(IAPU.PC);
+end;
+
+function AbsoluteIndexedX(access: Integer): Cardinal;
+begin
+  Result := IAPU.Registers.X + ImmediateWord(access);
+end;
+
+function AbsoluteIndexedY(access: Integer): Cardinal;
+begin
+  Result := IAPU.Registers.YA.Y + ImmediateWord(access);
+end;
+
+function IndirectIndexedY(access: Integer): Cardinal;
+var
+  dp: Byte;
+  addr: Word;
+begin
+  dp := Immediate(ACC_READ);
+  addr := APUGetWordZ(dp);
+  Result := addr + IAPU.Registers.YA.Y;
+end;
+
+
+// --- Operações de Pilha (Stack) ---
+
+procedure Push(val: Byte);
+begin
+  IAPU.RAM[$100 + IAPU.Registers.S] := val;
+  IAPU.Registers.S := IAPU.Registers.S - 1;
+end;
+
+function Pop: Byte;
+begin
+  IAPU.Registers.S := IAPU.Registers.S + 1;
+  Result := IAPU.RAM[$100 + IAPU.Registers.S];
+end;
+
+procedure PushW(val: Word);
+begin
+  Push(val shr 8); // Empurra o byte alto (MSB) primeiro
+  Push(val and $FF);  // Empurra o byte baixo (LSB)
+end;
+
+function PopW: Word;
+var
+  l, h: Byte;
+begin
+  l := Pop; // Puxa o byte baixo (LSB) primeiro
+  h := Pop; // Puxa o byte alto (MSB)
+  Result := l or (h shl 8);
+end;
+
+// --- Funções de Controle de Fluxo ---
+
+procedure Branch(condition: Boolean);
+var
+  offset: SmallInt;
+begin
+  offset := SmallInt(Immediate(ACC_READ)); // Lê o offset com sinal
+  if condition then
+  begin
+    // Adiciona 2 ciclos se o desvio for tomado
+    APU.Cycles := APU.Cycles + APUCycles[2];
+    IAPU.PC := PByte(NativeUInt(IAPU.PC) + offset);
+  end;
+end;
+
+procedure TCALL(idx: Integer);
+var
+  addr: Word;
+begin
+  addr := $FFC0 + ((15 - idx) * 2);
+  addr := APUGetWord(addr);
+  PushW(IAPU.Registers.PC);
+  IAPU.PC := @IAPU.RAM[addr];
+end;
+
+procedure BRK;
+var
+  addr: Word;
+begin
+  addr := APUGetWord($FFE0);
+  PushW(IAPU.Registers.PC);
+  APUPackStatus;
+  Push(IAPU.Registers.P or APU_BREAK_FLAG);
+  IAPU.Registers.P := IAPU.Registers.P and not APU_INTERRUPT_FLAG;
+  IAPU.PC := @IAPU.RAM[addr];
+end;
+
+// --- Rotinas de Atualização de Flags ---
+
+procedure APUCheckZero(b: Byte); inline;
+begin
+  IAPU.Zero := Ord(b = 0);
+end;
+
+procedure APUCheckNegative(b: Byte); inline;
+begin
+   // A flag 'Negative' é 1 se o bit 7 de 'b' for 1, e 0 caso contrário.
+   IAPU.Negative := b shr 7;
+end;
+
+procedure APUUnpackStatus;
+begin
+  IAPU.Carry := (IAPU.Registers.P and APU_CARRY_FLAG) <> 0;
+  IAPU.Zero := Ord((IAPU.Registers.P and APU_ZERO_FLAG) = 0); // Zero flag is inverted in P
+  IAPU.Overflow := (IAPU.Registers.P and APU_OVERFLOW_FLAG) <> 0;
+  IAPU.Negative := (IAPU.Registers.P and APU_NEGATIVE_FLAG) shr 7;
+  if (IAPU.Registers.P and APU_DIRECT_PAGE_FLAG) <> 0 then
+    IAPU.DirectPage := @IAPU.RAM[$100]
+  else
+    IAPU.DirectPage := IAPU.RAM;
+end;
+
+procedure APUPackStatus;
+begin
+  IAPU.Registers.P :=
+    Ord(IAPU.Carry) or
+    (Ord(IAPU.Zero = 0) shl 1) or // Inverte a Zero flag ao salvar
+    Ord((IAPU.Registers.P and APU_INTERRUPT_FLAG) <> 0) shl 2 or
+    (IAPU.Registers.P and APU_HALF_CARRY_FLAG) or
+    (IAPU.Registers.P and APU_BREAK_FLAG) or
+    Ord((IAPU.DirectPage = @IAPU.RAM[$100])) shl 5 or
+    Ord(IAPU.Overflow) shl 6 or
+    (IAPU.Negative shl 7);
+end;
+
+procedure APUPopStatus;
+begin
+  IAPU.Registers.P := Pop;
+  APUUnpackStatus;
+end;
+
+// --- Funções Aritméticas Genéricas ---
+
+function ADC_Generic(a, b: Byte): Byte;
+var
+   temp: Word;
+begin
+   temp := a + b + Ord(IAPU.Carry);
+   IAPU.Carry := temp >= $100;
+   IAPU.Zero := Ord(Byte(temp) = 0);
+   APUCheckNegative(Byte(temp));
+
+   if (((a and $F) + (b and $F) + Ord(IAPU.Carry)) > $F) then
+      IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY_FLAG
+   else
+      IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY_FLAG;
+
+   if (((a xor b) and $80) = 0) and (((a xor Byte(temp)) and $80) <> 0) then
       IAPU.Overflow := True
    else
       IAPU.Overflow := False;
-   if ((a xor b xor Byte(Int16)) and $10) <> 0 then
-      IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY
-   else
-      IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY;
-   a := Byte(Int16);
-   APUSetZN8(a);
+
+   Result := Byte(temp);
 end;
 
-procedure ADC(var a: Byte; b: Byte); inline;
+procedure ADC(val: Byte);
 begin
-   Work16 := a + b + Ord(IAPU.Carry);
-   IAPU.Carry := Work16 >= $100;
-   if ((not(a xor b)) and ((b xor Byte(Work16)))) and $80 <> 0 then
-      IAPU.Overflow := True
-   else
-      IAPU.Overflow := False;
-   if ((a xor b xor Byte(Work16)) and $10) <> 0 then
-      IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY
-   else
-      IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY;
-   a := Byte(Work16);
-   APUSetZN8(a);
+  IAPU.Registers.YA.A := ADC_Generic(IAPU.Registers.YA.A, val);
 end;
 
-procedure CMP(a, b: Byte); inline;
+function SBC_Generic(a, b: Byte): Byte;
+var
+  temp: SmallInt;
 begin
-   Int16 := SmallInt(a) - SmallInt(b);
-   IAPU.Carry := Int16 >= 0;
-   APUSetZN8(Byte(Int16));
+  temp := SmallInt(a) - SmallInt(b) - Ord(not IAPU.Carry);
+  IAPU.Carry := temp >= 0;
+  IAPU.Zero := Ord(Byte(temp) = 0);
+  APUCheckNegative(Byte(temp));
+
+  if (((a and $F) - (b and $F) - Ord(not IAPU.Carry)) < 0) then
+    IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY_FLAG
+  else
+    IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY_FLAG;
+
+  if (((a xor b) and $80) <> 0) and (((a xor Byte(temp)) and $80) <> 0) then
+    IAPU.Overflow := True
+  else
+    IAPU.Overflow := False;
+
+  Result := Byte(temp);
 end;
 
-procedure ASL(var b: Byte); inline;
+procedure SBC(val: Byte);
 begin
-   IAPU.Carry := (b and $80) <> 0;
-   b := b shl 1;
-   APUSetZN8(b);
+  IAPU.Registers.YA.A := SBC_Generic(IAPU.Registers.YA.A, val);
 end;
 
-procedure LSR(var b: Byte); inline;
+procedure CMP_Generic(a, b: Byte);
+var
+  temp: SmallInt;
 begin
-   IAPU.Carry := (b and 1) <> 0;
-   b := b shr 1;
-   APUSetZN8(b);
+  temp := SmallInt(a) - SmallInt(b);
+  IAPU.Carry := temp >= 0;
+  IAPU.Zero := Ord(Byte(temp) = 0);
+  APUCheckNegative(Byte(temp));
 end;
 
-procedure ROL(var b: Byte); inline;
+procedure ADDW(val: Word);
+var
+  YA: Cardinal;
 begin
-   Work16 := (Word(b) shl 1) or Ord(IAPU.Carry);
-   IAPU.Carry := Work16 >= $100;
-   b := Byte(Work16);
-   APUSetZN8(b);
+  YA := IAPU.Registers.YA.W + val;
+  IAPU.Carry := YA >= $10000;
+  IAPU.Zero := Ord(Word(YA) = 0);
+  APUCheckNegative(Byte(YA shr 8));
+
+  if (((IAPU.Registers.YA.W and $FFF) + (val and $FFF)) > $FFF) then
+     IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY_FLAG
+  else
+     IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY_FLAG;
+
+  if (((IAPU.Registers.YA.W xor val) and $8000) = 0) and (((IAPU.Registers.YA.W xor Word(YA)) and $8000) <> 0) then
+    IAPU.Overflow := True
+  else
+    IAPU.Overflow := False;
+
+  IAPU.Registers.YA.W := Word(YA);
 end;
 
-procedure ROR(var b: Byte); inline;
+procedure SUBW(val: Word);
+var
+  YA: Integer;
 begin
-   Work16 := b or (Word(Ord(IAPU.Carry)) shl 8);
-   IAPU.Carry := (Work16 and 1) <> 0;
-   Work16 := Work16 shr 1;
-   b := Byte(Work16);
-   APUSetZN8(b);
+  YA := Integer(IAPU.Registers.YA.W) - Integer(val);
+  IAPU.Carry := YA >= 0;
+  IAPU.Zero := Ord(Word(YA) = 0);
+  APUCheckNegative(Byte(Word(YA) shr 8));
+
+  if (((IAPU.Registers.YA.W and $FFF) - (val and $FFF)) < 0) then
+     IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY_FLAG
+  else
+     IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY_FLAG;
+
+  if (((IAPU.Registers.YA.W xor val) and $8000) <> 0) and (((IAPU.Registers.YA.W xor Word(YA)) and $8000) <> 0) then
+    IAPU.Overflow := True
+  else
+    IAPU.Overflow := False;
+
+  IAPU.Registers.YA.W := Word(YA);
 end;
 
-procedure Push(b: Byte); inline;
+procedure CMPW_Generic(a, b: Word);
+var
+  temp: Integer;
 begin
-   IAPU.RAM[$100 + IAPU.Registers.S] := b;
-   Dec(IAPU.Registers.S);
+  temp := Integer(a) - Integer(b);
+  IAPU.Carry := temp >= 0;
+  IAPU.Zero := Ord(Word(temp) = 0);
+  APUCheckNegative(Byte(Word(temp) shr 8));
 end;
 
-function Pop: Byte; inline;
+// --- Funções de Deslocamento e Rotação de Bits ---
+
+procedure ASL_Byte(addr: Cardinal);
+var
+  b: Byte;
 begin
-   Inc(IAPU.Registers.S);
-   Result := IAPU.RAM[$100 + IAPU.Registers.S];
+  b := APUGetByteZ(addr);
+  IAPU.Carry := (b and $80) <> 0;
+  b := b shl 1;
+  APUSetByteZ(b, addr);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure PushW(w: Word); inline;
+procedure ASL_Word(addr: Cardinal);
+var
+  w: Word;
 begin
-   IAPU.RAM[$FF + IAPU.Registers.S] := Byte(w);
-   IAPU.RAM[$100 + IAPU.Registers.S] := Byte(w shr 8);
-   Dec(IAPU.Registers.S, 2);
+  w := APUGetWord(addr);
+  IAPU.Carry := (w and $8000) <> 0;
+  w := w shl 1;
+  APUSetWord(w, addr);
+  IAPU.Zero := Ord(w = 0);
+  APUCheckNegative(w shr 8);
 end;
 
-function PopW: Word; inline;
+procedure LSR_Byte(addr: Cardinal);
+var
+  b: Byte;
 begin
-   Inc(IAPU.Registers.S, 2);
-   if IAPU.Registers.S = 0 then
-      Result := IAPU.RAM[$1FF] or (IAPU.RAM[$100] shl 8)
-   else
-      Result := IAPU.RAM[$FF + IAPU.Registers.S] + (IAPU.RAM[$100 + IAPU.Registers.S] shl 8);
+  b := APUGetByteZ(addr);
+  IAPU.Carry := (b and 1) <> 0;
+  b := b shr 1;
+  APUSetByteZ(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b); // Sempre 0
 end;
 
-procedure TCALL(n: Integer); inline;
+procedure LSR_Word(addr: Cardinal);
+var
+  w: Word;
 begin
-   PushW(Word(NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM)) + 1);
-   IAPU.PC := IAPU.RAM + APUGetByte($FFC0 + ((15 - n) shl 1)) + (APUGetByte($FFC1 + ((15 - n) shl 1)) shl 8);
+  w := APUGetWord(addr);
+  IAPU.Carry := (w and 1) <> 0;
+  w := w shr 1;
+  APUSetWord(w, addr);
+  IAPU.Zero := Ord(w = 0);
+  APUCheckNegative(w shr 8); // Sempre 0
 end;
 
-procedure Relative; inline;
+procedure ROL_Byte(addr: Cardinal);
+var
+  b: Byte;
+  c: Boolean;
 begin
-   Int8 := ShortInt(OP1);
-   Int16 := SmallInt(NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM)) + 2 + Int8;
+  b := APUGetByteZ(addr);
+  c := IAPU.Carry;
+  IAPU.Carry := (b and $80) <> 0;
+  b := (b shl 1) or Ord(c);
+  APUSetByteZ(b, addr);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Relative2; inline;
+procedure ROL_Word(addr: Cardinal);
+var
+  w: Word;
+  c: Boolean;
 begin
-   Int8 := ShortInt(OP2);
-   Int16 := SmallInt(NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM)) + 3 + Int8;
+  w := APUGetWord(addr);
+  c := IAPU.Carry;
+  IAPU.Carry := (w and $8000) <> 0;
+  w := (w shl 1) or Ord(c);
+  APUSetWord(w, addr);
+  IAPU.Zero := Ord(w = 0);
+  APUCheckNegative(w shr 8);
 end;
 
-procedure IndexedXIndirect; inline;
+procedure ROR_Byte(addr: Cardinal);
+var
+  b: Byte;
+  c: Boolean;
 begin
-   IAPU.Address := PWord(@IAPU.DirectPage[(OP1 + IAPU.Registers.X) and $FF])^;
+  b := APUGetByteZ(addr);
+  c := IAPU.Carry;
+  IAPU.Carry := (b and 1) <> 0;
+  b := (b shr 1) or (Ord(c) shl 7);
+  APUSetByteZ(b, addr);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Absolute; inline;
+procedure ROR_Word(addr: Cardinal);
+var
+  w: Word;
+  c: Boolean;
 begin
-   IAPU.Address := PWord(@IAPU.PC[1])^;
+  w := APUGetWord(addr);
+  c := IAPU.Carry;
+  IAPU.Carry := (w and 1) <> 0;
+  w := (w shr 1) or (Ord(c) shl 15);
+  APUSetWord(w, addr);
+  IAPU.Zero := Ord(w = 0);
+  APUCheckNegative(w shr 8);
 end;
 
-procedure AbsoluteX; inline;
+{
+  ReadBit
+  ------------------------------------------------------------------------------
+  Função auxiliar interna que lê um byte da memória, extrai o endereço e o
+  número do bit de um operando de 16 bits, e retorna o valor do bit.
+}
+function ReadBit(addr: Cardinal; out mem_addr: Cardinal; out bit_num: Byte): Boolean;
+var
+  b: Byte;
 begin
-   IAPU.Address := PWord(@IAPU.PC[1])^ + IAPU.Registers.X;
+  mem_addr := addr and $1FFF;
+  bit_num := (addr shr 13) and 7;
+  b := APUGetByte(mem_addr);
+  Result := (b and (1 shl bit_num)) <> 0;
 end;
 
-procedure AbsoluteY; inline;
+{
+  AND1
+  ------------------------------------------------------------------------------
+  Executa a operação: Carry = Carry AND BitDeMemoria
+}
+procedure AND1(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
 begin
-   IAPU.Address := PWord(@IAPU.PC[1])^ + IAPU.Registers.YA.Y;
+  if not IAPU.Carry then
+    Exit;
+  IAPU.Carry := ReadBit(addr, mem_addr, bit_num);
 end;
 
-procedure MemBit; inline;
+{
+  AND1N
+  ------------------------------------------------------------------------------
+  Executa a operação: Carry = Carry AND (NOT BitDeMemoria)
+}
+procedure AND1N(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
 begin
-   IAPU.Address := PWord(@IAPU.PC[1])^;
-   IAPU.Bit := IAPU.Address shr 13;
-   IAPU.Address := IAPU.Address and $1FFF;
+  if not IAPU.Carry then
+    Exit;
+  IAPU.Carry := not ReadBit(addr, mem_addr, bit_num);
 end;
 
-procedure IndirectIndexedY; inline;
+{
+  OR1
+  ------------------------------------------------------------------------------
+  Executa a operação: Carry = Carry OR BitDeMemoria
+}
+procedure OR1(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
 begin
-   IAPU.Address := PWord(@IAPU.DirectPage[OP1])^ + IAPU.Registers.YA.Y;
+  if IAPU.Carry then
+    Exit;
+  IAPU.Carry := ReadBit(addr, mem_addr, bit_num);
 end;
 
-procedure Set_Bit(b: Byte);
+{
+  OR1N
+  ------------------------------------------------------------------------------
+  Executa a operação: Carry = Carry OR (NOT BitDeMemoria)
+}
+procedure OR1N(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl b), OP1);
-   Inc(IAPU.PC, 2);
+  if IAPU.Carry then
+    Exit;
+  IAPU.Carry := not ReadBit(addr, mem_addr, bit_num);
 end;
 
-procedure Clr_Bit(b: Byte);
+{
+  EOR1
+  ------------------------------------------------------------------------------
+  Executa a operação: Carry = Carry XOR BitDeMemoria
+}
+procedure EOR1(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl b), OP1);
-   Inc(IAPU.PC, 2);
+  IAPU.Carry := IAPU.Carry xor ReadBit(addr, mem_addr, bit_num);
 end;
 
-procedure BBS_Bit(b: Byte);
+{
+  NOT1
+  ------------------------------------------------------------------------------
+  Executa a operação: BitDeMemoria = NOT BitDeMemoria
+}
+procedure NOT1(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
+  b: Byte;
 begin
-   Work8 := OP1;
-   Relative2;
-   if (APUGetByteDP(Work8) and (1 shl b)) <> 0 then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-   end
-   else
-      Inc(IAPU.PC, 3);
+  mem_addr := addr and $1FFF;
+  bit_num := (addr shr 13) and 7;
+  b := APUGetByte(mem_addr);
+  b := b xor (1 shl bit_num);
+  APUSetByte(b, mem_addr);
 end;
 
-procedure BBC_Bit(b: Byte);
+{
+  MOV1_C
+  ------------------------------------------------------------------------------
+  Executa a operação: Carry = BitDeMemoria
+}
+procedure MOV1_C(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
 begin
-   Work8 := OP1;
-   Relative2;
-   if (APUGetByteDP(Work8) and (1 shl b)) = 0 then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-   end
-   else
-      Inc(IAPU.PC, 3);
+  IAPU.Carry := ReadBit(addr, mem_addr, bit_num);
 end;
 
-// SPC700 Opcodes
-procedure Apu00; // NOP
+{
+  MOV1_M
+  ------------------------------------------------------------------------------
+  Executa a operação: BitDeMemoria = Carry
+}
+procedure MOV1_M(addr: Cardinal);
+var
+  mem_addr: Cardinal;
+  bit_num: Byte;
+  b: Byte;
 begin
-   Inc(IAPU.PC);
+  mem_addr := addr and $1FFF;
+  bit_num := (addr shr 13) and 7;
+  b := APUGetByte(mem_addr);
+  if IAPU.Carry then
+    b := b or (1 shl bit_num)
+  else
+    b := b and not (1 shl bit_num);
+  APUSetByte(b, mem_addr);
 end;
 
+//********************************************
+// --- Implementação dos Opcodes do SPC700 ---
+//********************************************
+
+// $00 NOP
+procedure Apu00;
+begin
+  // Nenhuma operação
+end;
+
+// $01 TCALL 0
 procedure Apu01;
 begin
-   TCALL(0);
+  TCALL(0);
 end;
 
-procedure Apu02; // SET1 dp.0
+// $02 SET P (Direct Page)
+procedure Apu02;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 0), OP1);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.P := IAPU.Registers.P or APU_DIRECT_PAGE_FLAG;
+  IAPU.DirectPage := @IAPU.RAM[$100];
 end;
 
+// $03 BBS 0, dp, rel (Branch on Bit Set)
 procedure Apu03;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(0);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 0)) <> 0);
 end;
 
+// $04 OR A, dp
 procedure Apu04;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $05 OR A, addr
 procedure Apu05;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $06 OR A, (X)
 procedure Apu06;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByteDP(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByteZ(IAPU.Registers.X);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $07 OR A, (dp+X)
 procedure Apu07;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $08 OR A, #imm
 procedure Apu08;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or OP1;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or Immediate(ACC_READ);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu09; // OR dp(dest),dp(src)
+// $09 OR dp, dp
+procedure Apu09;
+var
+  addr1, addr2: Cardinal;
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(OP1);
-   Work8 := Work8 or APUGetByteDP(OP2);
-   APUSetByteDP(Work8, OP2);
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr1 := Direct(ACC_READ_WRITE);
+  addr2 := Direct(ACC_READ);
+  b := APUGetByteZ(addr1) or APUGetByteZ(addr2);
+  APUSetByteZ(b, addr1);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu0A; // OR1 C,membit
+// $0A OR1 C, addr:bit
+procedure Apu0A;
 begin
-   MemBit;
-   if not IAPU.Carry then
-      if (APUGetByte(IAPU.Address) and (1 shl IAPU.Bit)) <> 0 then
-         IAPU.Carry := True;
-   Inc(IAPU.PC, 3);
+  OR1(Absolute(ACC_READ));
 end;
 
-procedure Apu0B; // ASL dp
+// $0B ASL dp
+procedure Apu0B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1);
-   ASL(Work8);
-   APUSetByteDP(Work8, OP1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ_WRITE);
+  ASL_Byte(addr);
 end;
 
-procedure Apu0C; // ASL abs
+// $0C ASL addr
+procedure Apu0C;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   ASL(Work8);
-   APUSetByte(Work8, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ_WRITE);
+  ASL_Word(addr);
 end;
 
-procedure Apu0D; // PUSH PSW
+// $0D PUSH PSW
+procedure Apu0D;
 begin
-   APUPackStatus;
-   Push(ICPU.Registers.P);
-   Inc(IAPU.PC);
+  APUPackStatus;
+  Push(IAPU.Registers.P);
 end;
 
-procedure Apu0E; // TSET1 abs
+// $0E TSET1 addr
+procedure Apu0E;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   APUSetByte(Work8 or IAPU.Registers.YA.a, IAPU.Address);
-   Work8 := IAPU.Registers.YA.a - Work8;
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ_WRITE);
+  b := APUGetByte(addr);
+  IAPU.Zero := Ord((IAPU.Registers.YA.A - b) = 0);
+  APUCheckNegative(IAPU.Registers.YA.A - b);
+  b := b or IAPU.Registers.YA.A;
+  APUSetByte(b, addr);
 end;
 
-procedure Apu0F; // BRK
+// $0F BRK
+procedure Apu0F;
 begin
-   PushW(Word(NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM)) + 1);
-   APUPackStatus;
-   Push(ICPU.Registers.P);
-   IAPU.Registers.P := IAPU.Registers.P or APU_BREAK;
-   IAPU.Registers.P := IAPU.Registers.P and not APU_INTERRUPT;
-   IAPU.PC := IAPU.RAM + APUGetByte($FFDE) + (APUGetByte($FFDF) shl 8);
+  BRK;
 end;
 
-procedure Apu10; // BPL
+// $10 BPL rel (Branch on Plus)
+procedure Apu10;
 begin
-   Relative;
-   if not APUCheckNegative then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-      APUShutdown;
-   end
-   else
-      Inc(IAPU.PC, 2);
+  Branch(IAPU.Negative = 0);
 end;
 
+// $11 TCALL 1
 procedure Apu11;
 begin
-   TCALL(1);
+  TCALL(1);
 end;
 
-procedure Apu12; // CLR1 dp.0
+// $12 CLR P
+procedure Apu12;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 0), OP1);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.P := IAPU.Registers.P and not APU_DIRECT_PAGE_FLAG;
+  IAPU.DirectPage := IAPU.RAM;
 end;
 
+// $13 BBS 1, dp, rel
 procedure Apu13;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(0);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 1)) <> 0);
 end;
 
+// $14 OR A, dp+X
 procedure Apu14;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByteDP(OP1 + IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $15 OR A, addr+X
 procedure Apu15;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $16 OR A, addr+Y
 procedure Apu16;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $17 OR A, (dp)+Y
 procedure Apu17;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a or APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A or APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu18; // OR dp,#00
+// $18 OR dp, #imm
+procedure Apu18;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := OP1;
-   Work8 := Work8 or APUGetByteDP(OP2);
-   APUSetByteDP(Work8, OP2);
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) or Immediate(ACC_READ);
+  APUSetByteZ(b, addr);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu19; // OR (X),(Y)
+// $19 OR (X), (Y)
+procedure Apu19;
+var
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(IAPU.Registers.X) or APUGetByteDP(IAPU.Registers.YA.Y);
-   APUSetZN8(Work8);
-   APUSetByteDP(Work8, IAPU.Registers.X);
-   Inc(IAPU.PC);
+  b := APUGetByteZ(IAPU.Registers.X) or APUGetByteZ(IAPU.Registers.YA.Y);
+  APUSetByteZ(b, IAPU.Registers.X);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu1A; // DECW dp
+// $1A DECW dp
+procedure Apu1A;
+var
+  addr: Cardinal;
+  w: Word;
 begin
-   Work16 := APUGetByteDP(OP1) + (APUGetByteDP(OP1 + 1) shl 8) - 1;
-   APUSetByteDP(Byte(Work16), OP1);
-   APUSetByteDP(Byte(Work16 shr 8), OP1 + 1);
-   APUSetZN16(Work16);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ_WRITE);
+  w := APUGetWordZ(addr) - 1;
+  APUSetWordZ(w, addr);
+  IAPU.Zero := Ord(w = 0);
+  APUCheckNegative(w shr 8);
 end;
 
-procedure Apu1B; // ASL dp+X
+// $1B ASL dp+X
+procedure Apu1B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1 + IAPU.Registers.X);
-   ASL(Work8);
-   APUSetByteDP(Work8, OP1 + IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ_WRITE);
+  ASL_Byte(addr);
 end;
 
-procedure Apu1C; // ASL A
+// $1C ASL A
+procedure Apu1C;
+var
+  b: Byte;
 begin
-   ASL(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  b := IAPU.Registers.YA.A;
+  IAPU.Carry := (b and $80) <> 0;
+  b := b shl 1;
+  IAPU.Registers.YA.A := b;
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu1D; // DEC X
+// $1D DEC X
+procedure Apu1D;
 begin
-   Dec(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC);
+  IAPU.Registers.X := IAPU.Registers.X - 1;
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure Apu1E; // CMP X,abs
+// $1E CMP X, addr
+procedure Apu1E;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.X, Work8);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  CMP_Generic(IAPU.Registers.X, APUGetByte(addr));
 end;
 
-procedure Apu1F; // JMP (abs+X)
+// $1F JMP (addr+X)
+procedure Apu1F;
 begin
-   Absolute;
-   IAPU.PC := IAPU.RAM + APUGetByte(IAPU.Address + IAPU.Registers.X) + (APUGetByte(IAPU.Address + IAPU.Registers.X + 1) shl 8);
+  IAPU.PC := @IAPU.RAM[APUGetWord(AbsoluteIndexedX(ACC_READ))];
 end;
 
-procedure Apu20; // CLRP
+// $20 CLR V
+procedure Apu20;
 begin
-   ICPU.Registers.P := ICPU.Registers.P and not APU_DIRECT_PAGE;
-   IAPU.DirectPage := IAPU.RAM;
-   Inc(IAPU.PC);
+  IAPU.Overflow := False;
+  IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY_FLAG;
 end;
 
+// $21 TCALL 2
 procedure Apu21;
 begin
-   TCALL(2);
+  TCALL(2);
 end;
 
-procedure Apu22; // SET1 dp.1
+// $22 SET1 dp.1
+procedure Apu22;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 1), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal" mas referenciado.
+  // Pode ser tratado como NOP ou implementar a lógica específica se necessário.
 end;
 
+// $23 BBS 2, dp, rel
 procedure Apu23;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(1);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 2)) <> 0);
 end;
 
+// $24 AND A, dp
 procedure Apu24;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $25 AND A, addr
 procedure Apu25;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $26 AND A, (X)
 procedure Apu26;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByteDP(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByteZ(IAPU.Registers.X);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $27 AND A, (dp+X)
 procedure Apu27;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $28 AND A, #imm
 procedure Apu28;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and OP1;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and Immediate(ACC_READ);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu29; // AND dp(dest),dp(src)
+// $29 AND dp, dp
+procedure Apu29;
+var
+  addr1, addr2: Cardinal;
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(OP1);
-   Work8 := Work8 and APUGetByteDP(OP2);
-   APUSetByteDP(Work8, OP2);
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr1 := Direct(ACC_READ_WRITE);
+  addr2 := Direct(ACC_READ);
+  b := APUGetByteZ(addr1) and APUGetByteZ(addr2);
+  APUSetByteZ(b, addr1);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu2B; // ROL dp
+// $2A OR1 C, /addr:bit
+procedure Apu2A;
 begin
-   Work8 := APUGetByteDP(OP1);
-   ROL(Work8);
-   APUSetByteDP(Work8, OP1);
-   Inc(IAPU.PC, 2);
+  NOT1(Absolute(ACC_READ));
 end;
 
-procedure Apu2C; // ROL abs
+// $2B ROL dp
+procedure Apu2B;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   ROL(Work8);
-   APUSetByte(Work8, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ_WRITE);
+  ROL_Byte(addr);
 end;
 
-procedure Apu2D; // PUSH A
+// $2C ROL addr
+procedure Apu2C;
+var
+  addr: Cardinal;
 begin
-   Push(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  addr := Absolute(ACC_READ_WRITE);
+  ROL_Word(addr);
 end;
 
-procedure Apu2E; // CBNE dp,rel
+// $2D PUSH A
+procedure Apu2D;
 begin
-   Work8 := OP1;
-   Relative2;
-   if APUGetByteDP(Work8) <> IAPU.Registers.YA.a then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-      APUShutdown;
-   end
-   else
-      Inc(IAPU.PC, 3);
+  Push(IAPU.Registers.YA.A);
 end;
 
-procedure Apu2F; // BRA rel
+// $2E CBNE dp, rel
+procedure Apu2E;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Relative;
-   IAPU.PC := IAPU.RAM + Word(Int16);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch(IAPU.Registers.YA.A <> b);
 end;
 
+// $2F BRA rel
+procedure Apu2F;
+begin
+  Branch(True);
+end;
+
+// $30 BMI rel (Branch on Minus)
+procedure Apu30;
+begin
+  Branch(IAPU.Negative <> 0);
+end;
+
+// $31 TCALL 3
 procedure Apu31;
 begin
-   TCALL(3);
+  TCALL(3);
 end;
 
-procedure Apu32; // CLR1 dp.1
+// $32 SET1 dp.1
+procedure Apu32;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 1), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $33 BBS 3, dp, rel
 procedure Apu33;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(1);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 3)) <> 0);
 end;
 
+// $34 AND A, dp+X
 procedure Apu34;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByteDP(OP1 + IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $35 AND A, addr+X
 procedure Apu35;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $36 AND A, addr+Y
 procedure Apu36;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $37 AND A, (dp)+Y
 procedure Apu37;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a and APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A and APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu38; // AND dp,#00
+// $38 AND dp, #imm
+procedure Apu38;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := OP1;
-   Work8 := Work8 and APUGetByteDP(OP2);
-   APUSetByteDP(Work8, OP2);
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) and Immediate(ACC_READ);
+  APUSetByteZ(b, addr);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu39; // AND (X),(Y)
+// $39 AND (X), (Y)
+procedure Apu39;
+var
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(IAPU.Registers.X) and APUGetByteDP(IAPU.Registers.YA.Y);
-   APUSetZN8(Work8);
-   APUSetByteDP(Work8, IAPU.Registers.X);
-   Inc(IAPU.PC);
+  b := APUGetByteZ(IAPU.Registers.X) and APUGetByteZ(IAPU.Registers.YA.Y);
+  APUSetByteZ(b, IAPU.Registers.X);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu3A; // INCW dp
+// $3A INCW dp
+procedure Apu3A;
+var
+  addr: Cardinal;
+  w: Word;
 begin
-   Work16 := APUGetByteDP(OP1) + (APUGetByteDP(OP1 + 1) shl 8) + 1;
-   APUSetByteDP(Byte(Work16), OP1);
-   APUSetByteDP(Byte(Work16 shr 8), OP1 + 1);
-   APUSetZN16(Work16);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ_WRITE);
+  w := APUGetWordZ(addr) + 1;
+  APUSetWordZ(w, addr);
+  IAPU.Zero := Ord(w = 0);
+  APUCheckNegative(w shr 8);
 end;
 
-procedure Apu3B; // ROL dp+X
+// $3B ROL dp+X
+procedure Apu3B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1 + IAPU.Registers.X);
-   ROL(Work8);
-   APUSetByteDP(Work8, OP1 + IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ_WRITE);
+  ROL_Byte(addr);
 end;
 
-procedure Apu3C; // ROL A
+// $3C ROL A
+procedure Apu3C;
+var
+  b: Byte;
+  c: Boolean;
 begin
-   ROL(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  b := IAPU.Registers.YA.A;
+  c := IAPU.Carry;
+  IAPU.Carry := (b and $80) <> 0;
+  b := (b shl 1) or Ord(c);
+  IAPU.Registers.YA.A := b;
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu3D; // INC X
+// $3D INC X
+procedure Apu3D;
 begin
-   Inc(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC);
+  IAPU.Registers.X := IAPU.Registers.X + 1;
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure Apu3E; // CMP X,dp
+// $3E CMP X, dp
+procedure Apu3E;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1);
-   CMP(IAPU.Registers.X, Work8);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  CMP_Generic(IAPU.Registers.X, APUGetByteZ(addr));
 end;
 
-procedure Apu3F; // CALL absolute
+// $3F CALL addr
+procedure Apu3F;
+var
+  addr: Word;
 begin
-   Absolute;
-   PushW(Word(NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM)) + 3);
-   IAPU.PC := IAPU.RAM + IAPU.Address;
+  addr := Absolute(ACC_READ);
+  PushW(IAPU.Registers.PC);
+  IAPU.PC := @IAPU.RAM[addr];
 end;
 
-procedure Apu40; // SETP
+// $40 SET C (Carry)
+procedure Apu40;
 begin
-   IAPU.Registers.P := IAPU.Registers.P or APU_DIRECT_PAGE;
-   IAPU.DirectPage := IAPU.RAM + $100;
-   Inc(IAPU.PC);
+  IAPU.Carry := True;
 end;
 
+// $41 TCALL 4
 procedure Apu41;
 begin
-   TCALL(4);
+  TCALL(4);
 end;
 
-procedure Apu42; // SET1 dp.2
+// $42 SET1 dp.2
+procedure Apu42;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 2), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $43 BBS 4, dp, rel
 procedure Apu43;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(2);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 4)) <> 0);
 end;
 
+// $44 EOR A, dp
 procedure Apu44;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $45 EOR A, addr
 procedure Apu45;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $46 EOR A, (X)
 procedure Apu46;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByteDP(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByteZ(IAPU.Registers.X);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $47 EOR A, (dp+X)
 procedure Apu47;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $48 EOR A, #imm
 procedure Apu48;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor OP1;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor Immediate(ACC_READ);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu49; // EOR dp(dest),dp(src)
+// $49 EOR dp, dp
+procedure Apu49;
+var
+  addr1, addr2: Cardinal;
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(OP1);
-   Work8 := Work8 xor APUGetByteDP(OP2);
-   APUSetByteDP(Work8, OP2);
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr1 := Direct(ACC_READ_WRITE);
+  addr2 := Direct(ACC_READ);
+  b := APUGetByteZ(addr1) xor APUGetByteZ(addr2);
+  APUSetByteZ(b, addr1);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu4A; // AND1 C,membit
+// $4A AND1 C, addr:bit
+procedure Apu4A;
 begin
-   MemBit;
-   if IAPU.Carry then
-      if (APUGetByte(IAPU.Address) and (1 shl IAPU.Bit)) = 0 then
-         IAPU.Carry := False;
-   Inc(IAPU.PC, 3);
+  AND1(Absolute(ACC_READ));
 end;
 
-procedure Apu4B; // LSR dp
+// $4B LSR dp
+procedure Apu4B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1);
-   LSR(Work8);
-   APUSetByteDP(Work8, OP1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ_WRITE);
+  LSR_Byte(addr);
 end;
 
-procedure Apu4C; // LSR abs
+// $4C LSR addr
+procedure Apu4C;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   LSR(Work8);
-   APUSetByte(Work8, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ_WRITE);
+  LSR_Word(addr);
 end;
 
-procedure Apu4D; // PUSH X
+// $4D PUSH X
+procedure Apu4D;
 begin
-   Push(IAPU.Registers.X);
-   Inc(IAPU.PC);
+  Push(IAPU.Registers.X);
 end;
 
-procedure Apu4E; // TCLR1 abs
+// $4E TCLR1 addr
+procedure Apu4E;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   APUSetByte(Work8 and not IAPU.Registers.YA.a, IAPU.Address);
-   Work8 := IAPU.Registers.YA.a - Work8;
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ_WRITE);
+  b := APUGetByte(addr);
+  IAPU.Zero := Ord((IAPU.Registers.YA.A - b) = 0);
+  APUCheckNegative(IAPU.Registers.YA.A - b);
+  b := b and not IAPU.Registers.YA.A;
+  APUSetByte(b, addr);
 end;
 
-procedure Apu4F; // PCALL $XX
+// $4F PCALL u
+procedure Apu4F;
+var
+  addr: Word;
 begin
-   Work8 := OP1;
-   PushW(Word(NativeUInt(IAPU.PC) - NativeUInt(IAPU.RAM)) + 2);
-   IAPU.PC := IAPU.RAM + $FF00 + Work8;
+  addr := $FF00 + (Immediate(ACC_READ) shl 1);
+  addr := APUGetWord(addr);
+  PushW(IAPU.Registers.PC);
+  IAPU.PC := @IAPU.RAM[addr];
 end;
 
-procedure Apu50; // BVC
+// $50 BVC rel (Branch on Overflow Clear)
+procedure Apu50;
 begin
-   Relative;
-   if not IAPU.Overflow then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-   end
-   else
-      Inc(IAPU.PC, 2);
+  Branch(not IAPU.Overflow);
 end;
 
+// $51 TCALL 5
 procedure Apu51;
 begin
-   TCALL(5);
+  TCALL(5);
 end;
 
-procedure Apu52; // CLR1 dp.2
+// $52 CLR1 dp.2
+procedure Apu52;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 2), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - CLR1 é um opcode "ilegal"
 end;
 
+// $53 BBS 5, dp, rel
 procedure Apu53;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(2);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 5)) <> 0);
 end;
 
+// $54 EOR A, dp+X
 procedure Apu54;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByteDP(OP1 + IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $55 EOR A, addr+X
 procedure Apu55;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $56 EOR A, addr+Y
 procedure Apu56;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByte(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
+// $57 EOR A, (dp)+Y
 procedure Apu57;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a xor APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A xor APUGetByteZ(addr);
+  APUCheckZero(IAPU.Registers.YA.A);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu58; // EOR dp,#00
+// $58 EOR dp, #imm
+procedure Apu58;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := OP1;
-   Work8 := Work8 xor APUGetByteDP(OP2);
-   APUSetByteDP(Work8, OP2);
-   APUSetZN8(Work8);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) xor Immediate(ACC_READ);
+  APUSetByteZ(b, addr);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu59; // EOR (X),(Y)
+// $59 EOR (X), (Y)
+procedure Apu59;
+var
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(IAPU.Registers.X) xor APUGetByteDP(IAPU.Registers.YA.Y);
-   APUSetZN8(Work8);
-   APUSetByteDP(Work8, IAPU.Registers.X);
-   Inc(IAPU.PC);
+  b := APUGetByteZ(IAPU.Registers.X) xor APUGetByteZ(IAPU.Registers.YA.Y);
+  APUSetByteZ(b, IAPU.Registers.X);
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu5A; // CMPW YA,dp
+// $5A CMPW YA, dp
+procedure Apu5A;
+var
+  addr: Cardinal;
 begin
-   Work16 := APUGetByteDP(OP1) + (APUGetByteDP(OP1 + 1) shl 8);
-   Int32 := SmallInt(IAPU.Registers.YA.w) - SmallInt(Work16);
-   IAPU.Carry := Int32 >= 0;
-   APUSetZN16(Word(Int32));
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  CMPW_Generic(IAPU.Registers.YA.W, APUGetWordZ(addr));
 end;
 
-procedure Apu5B; // LSR dp+X
+// $5B LSR dp+X
+procedure Apu5B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1 + IAPU.Registers.X);
-   LSR(Work8);
-   APUSetByteDP(Work8, OP1 + IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ_WRITE);
+  LSR_Byte(addr);
 end;
 
-procedure Apu5C; // LSR A
+// $5C LSR A
+procedure Apu5C;
+var
+  b: Byte;
 begin
-   LSR(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  b := IAPU.Registers.YA.A;
+  IAPU.Carry := (b and 1) <> 0;
+  b := b shr 1;
+  IAPU.Registers.YA.A := b;
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b); // Sempre 0
 end;
 
-procedure Apu5D; // MOV X,A
+// $5D MOV X, A
+procedure Apu5D;
 begin
-   IAPU.Registers.X := IAPU.Registers.YA.a;
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.PC);
+  IAPU.Registers.X := IAPU.Registers.YA.A;
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure Apu5E; // CMP Y,abs
+// $5E CMP Y, addr
+procedure Apu5E;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.YA.Y, Work8);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.Y, APUGetByte(addr));
 end;
 
-procedure Apu5F; // JMP abs
+// $5F JMP addr
+procedure Apu5F;
 begin
-   Absolute;
-   IAPU.PC := IAPU.RAM + IAPU.Address;
+  IAPU.PC := @IAPU.RAM[Absolute(ACC_READ)];
 end;
 
-procedure Apu60; // CLRC
+// $60 CLR C
+procedure Apu60;
 begin
-   IAPU.Carry := False;
-   Inc(IAPU.PC);
+  IAPU.Carry := False;
 end;
 
+// $61 TCALL 6
 procedure Apu61;
 begin
-   TCALL(6);
+  TCALL(6);
 end;
 
-procedure Apu62; // SET1 dp.3
+// $62 SET1 dp.3
+procedure Apu62;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 3), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $63 BBS 6, dp, rel
 procedure Apu63;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(3);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 6)) <> 0);
 end;
 
+// $64 CMP A, dp
 procedure Apu64;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.a - APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByteZ(addr));
 end;
 
+// $65 CMP A, addr
 procedure Apu65;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByte(addr));
 end;
 
+// $66 CMP A, (X)
 procedure Apu66;
 begin
-   Work8 := APUGetByteDP(IAPU.Registers.X);
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByteZ(IAPU.Registers.X));
 end;
 
+// $67 CMP A, (dp+X)
 procedure Apu67;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByteZ(addr));
 end;
 
+// $68 CMP A, #imm
 procedure Apu68;
 begin
-   Work8 := OP1;
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  CMP_Generic(IAPU.Registers.YA.A, Immediate(ACC_READ));
 end;
 
-procedure Apu69; // CMP dp(dest),dp(src)
+// $69 CMP dp, dp
+procedure Apu69;
+var
+  addr1, addr2: Cardinal;
 begin
-   W1 := APUGetByteDP(OP1);
-   Work8 := APUGetByteDP(OP2);
-   CMP(Work8, W1);
-   Inc(IAPU.PC, 3);
+  addr1 := Direct(ACC_READ);
+  addr2 := Direct(ACC_READ);
+  CMP_Generic(APUGetByteZ(addr1), APUGetByteZ(addr2));
 end;
 
-procedure Apu6A; // AND1 C,membit
+// $6A AND1 C, /addr:bit
+procedure Apu6A;
 begin
-   MemBit;
-   if IAPU.Carry then
-      if (APUGetByte(IAPU.Address) and (1 shl IAPU.Bit)) = 0 then
-         IAPU.Carry := False;
-   Inc(IAPU.PC, 3);
+  AND1N(Absolute(ACC_READ));
 end;
 
-procedure Apu6B; // ROR dp
+// $6B ROR dp
+procedure Apu6B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1);
-   ROR(Work8);
-   APUSetByteDP(Work8, OP1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ_WRITE);
+  ROR_Byte(addr);
 end;
 
-procedure Apu6C; // ROR abs
+// $6C ROR addr
+procedure Apu6C;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   ROR(Work8);
-   APUSetByte(Work8, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ_WRITE);
+  ROR_Word(addr);
 end;
 
-procedure Apu6D; // PUSH Y
+// $6D PUSH Y
+procedure Apu6D;
 begin
-   Push(IAPU.Registers.YA.Y);
-   Inc(IAPU.PC);
+  Push(IAPU.Registers.YA.Y);
 end;
 
-procedure Apu6E; // DBNZ dp,rel
+// $6E DBNE dp, rel
+procedure Apu6E;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := OP1;
-   Relative2;
-   W1 := APUGetByteDP(Work8) - 1;
-   APUSetByteDP(W1, Work8);
-   if W1 <> 0 then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-   end
-   else
-      Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) - 1;
+  APUSetByteZ(b, addr);
+  Branch(b <> 0);
 end;
 
-procedure Apu6F; // RET
+// $6F RET
+procedure Apu6F;
 begin
-   IAPU.Registers.PC := PopW;
-   IAPU.PC := IAPU.RAM + IAPU.Registers.PC;
+  IAPU.Registers.PC := PopW;
+  IAPU.PC := @IAPU.RAM[IAPU.Registers.PC];
 end;
 
-procedure Apu70; // BVS
+// $70 BVS rel (Branch on Overflow Set)
+procedure Apu70;
 begin
-   Relative;
-   if IAPU.Overflow then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-   end
-   else
-      Inc(IAPU.PC, 2);
+  Branch(IAPU.Overflow);
 end;
 
+// $71 TCALL 7
 procedure Apu71;
 begin
-   TCALL(7);
+  TCALL(7);
 end;
 
-procedure Apu72; // CLR1 dp.3
+// $72 CLR1 dp.3
+procedure Apu72;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 3), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - CLR1 é um opcode "ilegal"
 end;
 
+// $73 BBS 7, dp, rel
 procedure Apu73;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(3);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 7)) <> 0);
 end;
 
+// $74 CMP A, dp+X
 procedure Apu74;
+var
+  addr: Cardinal;
 begin
-   IAPU.OpenBus := GetByte(DirectIndexedXE1(ACC_READ));
-   ADC8(ICPU.OpenBus);
+  addr := DirectIndexedX(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByteZ(addr));
 end;
 
+// $75 CMP A, addr+X
 procedure Apu75;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByte(addr));
 end;
 
+// $76 CMP A, addr+Y
 procedure Apu76;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByte(addr));
 end;
 
+// $77 CMP A, (dp)+Y
 procedure Apu77;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   Work8 := APUGetByte(IAPU.Address);
-   CMP(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.A, APUGetByteZ(addr));
 end;
 
-procedure Apu78; // CMP dp,#00
+// $78 CMP dp, #imm
+procedure Apu78;
+var
+  addr: Cardinal;
 begin
-   Work8 := OP1;
-   W1 := APUGetByteDP(OP2);
-   CMP(W1, Work8);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ);
+  CMP_Generic(APUGetByteZ(addr), Immediate(ACC_READ));
 end;
 
-procedure Apu79; // CMP (X),(Y)
+// $79 CMP (X), (Y)
+procedure Apu79;
 begin
-   W1 := APUGetByteDP(IAPU.Registers.X);
-   Work8 := APUGetByteDP(IAPU.Registers.YA.Y);
-   CMP(W1, Work8);
-   Inc(IAPU.PC);
+  CMP_Generic(APUGetByteZ(IAPU.Registers.X), APUGetByteZ(IAPU.Registers.YA.Y));
 end;
 
-procedure Apu7A; // ADDW YA,dp
+// $7A ADDW YA, dp
+procedure Apu7A;
+var
+  addr: Cardinal;
 begin
-   Work16 := APUGetByteDP(OP1) + (APUGetByteDP(OP1 + 1) shl 8);
-   Work32 := Cardinal(IAPU.Registers.YA.w) + Work16;
-   IAPU.Carry := Work32 >= $10000;
-   if ((not(IAPU.Registers.YA.w xor Work16)) and (Work16 xor Word(Work32))) and $8000 <> 0 then
-      IAPU.Overflow := True
-   else
-      IAPU.Overflow := False;
-
-   if ((IAPU.Registers.YA.w xor Work16 xor Word(Work32)) and $1000) <> 0 then
-      IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY
-   else
-      IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY;
-
-   IAPU.Registers.YA.w := Word(Work32);
-   APUSetZN16(IAPU.Registers.YA.w);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  ADDW(APUGetWordZ(addr));
 end;
 
-procedure Apu7B; // ROR dp+X
+// $7B ROR dp+X
+procedure Apu7B;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1 + IAPU.Registers.X);
-   ROR(Work8);
-   APUSetByteDP(Work8, OP1 + IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ_WRITE);
+  ROR_Byte(addr);
 end;
 
-procedure Apu7C; // ROR A
+// $7C ROR A
+procedure Apu7C;
+var
+  b: Byte;
+  c: Boolean;
 begin
-   ROR(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  b := IAPU.Registers.YA.A;
+  c := IAPU.Carry;
+  IAPU.Carry := (b and 1) <> 0;
+  b := (b shr 1) or (Ord(c) shl 7);
+  IAPU.Registers.YA.A := b;
+  APUCheckZero(b);
+  APUCheckNegative(b);
 end;
 
-procedure Apu7D; // MOV A,X
+// $7D MOV A, X
+procedure Apu7D;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.X;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := IAPU.Registers.X;
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure Apu7E; // CMP Y,dp
+// $7E CMP Y, dp
+procedure Apu7E;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1);
-   CMP(IAPU.Registers.YA.Y, Work8);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  CMP_Generic(IAPU.Registers.YA.Y, APUGetByteZ(addr));
 end;
 
-procedure Apu7F; // RETI
+// $7F RETI
+procedure Apu7F;
 begin
-   IAPU.Registers.P := Pop;
-   APUUnpackStatus;
-   IAPU.Registers.PC := PopW;
-   IAPU.PC := IAPU.RAM + IAPU.Registers.PC;
+  APUPopStatus;
+  IAPU.Registers.PC := PopW;
+  IAPU.PC := @IAPU.RAM[IAPU.Registers.PC];
 end;
 
+// $80 SET C
+procedure Apu80;
+begin
+  IAPU.Carry := True;
+end;
+
+// $81 TCALL 8
 procedure Apu81;
 begin
-   TCALL(8);
+  TCALL(8);
 end;
 
-procedure Apu82; // SET1 dp.4
+// $82 SET1 dp.4
+procedure Apu82;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 4), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $83 BBC 0, dp, rel (Branch on Bit Clear)
 procedure Apu83;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(4);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 0)) = 0);
 end;
 
+// $84 ADC A, dp
+procedure Apu84;
+var
+  addr: Cardinal;
+begin
+  addr := Direct(ACC_READ);
+  ADC(APUGetByteZ(addr));
+end;
+
+// $85 ADC A, addr
+procedure Apu85;
+var
+  addr: Cardinal;
+begin
+  addr := Absolute(ACC_READ);
+  ADC(APUGetByte(addr));
+end;
+
+// $86 ADC A, (X)
+procedure Apu86;
+begin
+  ADC(APUGetByteZ(IAPU.Registers.X));
+end;
+
+// $87 ADC A, (dp+X)
+procedure Apu87;
+var
+  addr: Cardinal;
+begin
+  addr := DirectIndexedX(ACC_READ);
+  ADC(APUGetByteZ(addr));
+end;
+
+// $88 ADC A, #imm
+procedure Apu88;
+begin
+  ADC(Immediate(ACC_READ));
+end;
+
+// $89 ADC dp, dp
+procedure Apu89;
+var
+  addr1, addr2: Cardinal;
+  b: Byte;
+begin
+  addr1 := Direct(ACC_READ);
+  addr2 := Direct(ACC_READ_WRITE);
+  b := ADC_Generic(APUGetByteZ(addr1), APUGetByteZ(addr2));
+  APUSetByteZ(b, addr2);
+end;
+
+// $8A EOR1 C, addr:bit
+procedure Apu8A;
+begin
+  EOR1(Absolute(ACC_READ));
+end;
+
+// $8B DEC dp
+procedure Apu8B;
+var
+  addr: Cardinal;
+  b: Byte;
+begin
+  addr := Direct(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) - 1;
+  APUSetByteZ(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b);
+end;
+
+// $8C DEC addr
+procedure Apu8C;
+var
+  addr: Cardinal;
+  b: Byte;
+begin
+  addr := Absolute(ACC_READ_WRITE);
+  b := APUGetByte(addr) - 1;
+  APUSetByte(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b);
+end;
+
+// $8D MOV Y, #imm
+procedure Apu8D;
+begin
+  IAPU.Registers.YA.Y := Immediate(ACC_READ);
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
+end;
+
+// $8E POP PSW
+procedure Apu8E;
+begin
+  IAPU.Registers.P := Pop;
+  APUUnpackStatus;
+end;
+
+// $8F MOV dp, #imm
+procedure Apu8F;
+var
+  addr: Cardinal;
+  b: Byte;
+begin
+  b := Immediate(ACC_READ);
+  addr := Direct(ACC_WRITE);
+  APUSetByteZ(b, addr);
+end;
+
+// $90 BCC rel (Branch on Carry Clear)
+procedure Apu90;
+begin
+  Branch(not IAPU.Carry);
+end;
+
+// $91 TCALL 9
 procedure Apu91;
 begin
-   TCALL(9);
+  TCALL(9);
 end;
 
-procedure Apu92; // CLR1 dp.4
+// $92 CLR1 dp.4
+procedure Apu92;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 4), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - CLR1 é um opcode "ilegal"
 end;
 
+// $93 BBC 1, dp, rel
 procedure Apu93;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(4);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 1)) = 0);
 end;
 
-procedure ApuA0; // EI
+// $94 ADC A, dp+X
+procedure Apu94;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.P := IAPU.Registers.P or APU_INTERRUPT;
-   Inc(IAPU.PC);
+  addr := DirectIndexedX(ACC_READ);
+  ADC(APUGetByteZ(addr));
 end;
 
+// $95 ADC A, addr+X
+procedure Apu95;
+var
+  addr: Cardinal;
+begin
+  addr := AbsoluteIndexedX(ACC_READ);
+  ADC(APUGetByte(addr));
+end;
+
+// $96 ADC A, addr+Y
+procedure Apu96;
+var
+  addr: Cardinal;
+begin
+  addr := AbsoluteIndexedY(ACC_READ);
+  ADC(APUGetByte(addr));
+end;
+
+// $97 ADC A, (dp)+Y
+procedure Apu97;
+var
+  addr: Cardinal;
+begin
+  addr := IndirectIndexedY(ACC_READ);
+  ADC(APUGetByteZ(addr));
+end;
+
+// $98 ADC dp, #imm
+procedure Apu98;
+var
+  addr: Cardinal;
+  b: Byte;
+begin
+  addr := Direct(ACC_READ_WRITE);
+  b := ADC_Generic(APUGetByteZ(addr), Immediate(ACC_READ));
+  APUSetByteZ(b, addr);
+end;
+
+// $99 ADC (X), (Y)
+procedure Apu99;
+var
+  b: Byte;
+begin
+  b := ADC_Generic(APUGetByteZ(IAPU.Registers.X), APUGetByteZ(IAPU.Registers.YA.Y));
+  APUSetByteZ(b, IAPU.Registers.X);
+end;
+
+// $9A SUBW YA, dp
+procedure Apu9A;
+var
+  addr: Cardinal;
+begin
+  addr := Direct(ACC_READ);
+  SUBW(APUGetWordZ(addr));
+end;
+
+// $9B DEC dp+X
+procedure Apu9B;
+var
+  addr: Cardinal;
+  b: Byte;
+begin
+  addr := DirectIndexedX(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) - 1;
+  APUSetByteZ(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b);
+end;
+
+// $9C DEC A
+procedure Apu9C;
+begin
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A - 1;
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
+end;
+
+// $9D MOV X, SP
+procedure Apu9D;
+begin
+  IAPU.Registers.X := IAPU.Registers.S;
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
+end;
+
+// $9E DIV YA, X
+procedure Apu9E;
+var
+  YA: Word;
+  Y, A, X, _div, Rem: Word;
+begin
+  YA := IAPU.Registers.YA.W;
+  X := IAPU.Registers.X;
+
+  // A divisão no SPC700 é indefinida se X for 0
+  if X = 0 then
+  begin
+    IAPU.Registers.YA.W := $FFFF;
+    IAPU.Overflow := True;
+    IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY_FLAG;
+  end
+  else
+  begin
+    Y := IAPU.Registers.YA.Y;
+    A := IAPU.Registers.YA.A;
+    _div := YA div X;
+    Rem := YA mod X;
+    IAPU.Registers.YA.A := _div;
+    IAPU.Registers.YA.Y := Rem;
+    IAPU.Overflow := False;
+    if (Y / 2) >= X then
+      IAPU.Registers.P := IAPU.Registers.P or APU_HALF_CARRY_FLAG
+    else
+      IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY_FLAG;
+  end;
+end;
+
+// $9F XCN A (eXchange Nibble)
+procedure Apu9F;
+begin
+  IAPU.Registers.YA.A := (IAPU.Registers.YA.A shr 4) or (IAPU.Registers.YA.A shl 4);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
+end;
+
+// $A0 EI (Enable Interrupts)
+procedure ApuA0;
+begin
+  IAPU.Registers.P := IAPU.Registers.P or APU_INTERRUPT_FLAG;
+end;
+
+// $A1 TCALL 10
 procedure ApuA1;
 begin
-   TCALL(10);
+  TCALL(10);
 end;
 
-procedure ApuA2; // SET1 dp.5
+// $A2 SET1 dp.5
+procedure ApuA2;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 5), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $A3 BBC 2, dp, rel
 procedure ApuA3;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(5);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 2)) = 0);
 end;
 
-procedure ApuA4; // SBC A,dp
+// $A4 SBC A, dp
+procedure ApuA4;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  SBC(APUGetByteZ(addr));
 end;
 
-procedure ApuA5; // SBC A,abs
+// $A5 SBC A, addr
+procedure ApuA5;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  SBC(APUGetByte(addr));
 end;
 
-procedure ApuA6; // SBC A,(X)
+// $A6 SBC A, (X)
+procedure ApuA6;
 begin
-   Work8 := APUGetByteDP(IAPU.Registers.X);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC);
+  SBC(APUGetByteZ(IAPU.Registers.X));
 end;
 
-procedure ApuA7; // SBC A,(dp+X)
+// $A7 SBC A, (dp+X)
+procedure ApuA7;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   Work8 := APUGetByte(IAPU.Address);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  SBC(APUGetByteZ(addr));
 end;
 
-procedure ApuA8; // SBC A,#00
+// $A8 SBC A, #imm
+procedure ApuA8;
 begin
-   Work8 := OP1;
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  SBC(Immediate(ACC_READ));
 end;
 
-procedure ApuA9; // SBC dp(dest),dp(src)
+// $A9 SBC dp, dp
+procedure ApuA9;
+var
+  addr1, addr2: Cardinal;
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(OP1);
-   W1 := APUGetByteDP(OP2);
-   SBC(W1, Work8);
-   APUSetByteDP(W1, OP2);
-   Inc(IAPU.PC, 3);
+  addr1 := Direct(ACC_READ);
+  addr2 := Direct(ACC_READ_WRITE);
+  b := SBC_Generic(APUGetByteZ(addr1), APUGetByteZ(addr2));
+  APUSetByteZ(b, addr2);
 end;
 
-procedure ApuAA; // MOV1 C,membit
+// $AA MOV1 C, addr:bit
+procedure ApuAA;
 begin
-   MemBit;
-   if (APUGetByte(IAPU.Address) and (1 shl IAPU.Bit)) <> 0 then
-      IAPU.Carry := True
-   else
-      IAPU.Carry := False;
-   Inc(IAPU.PC, 3);
+  MOV1_C(Absolute(ACC_READ));
 end;
 
-procedure ApuAB; // INC dp
+// $AB INC dp
+procedure ApuAB;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(OP1) + 1;
-   APUSetByteDP(Work8, OP1);
-   APUSetZN8(Work8);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) + 1;
+  APUSetByteZ(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b);
 end;
 
-procedure ApuAC; // INC abs
+// $AC INC addr
+procedure ApuAC;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Absolute;
-   Work8 := APUGetByte(IAPU.Address) + 1;
-   APUSetByte(Work8, IAPU.Address);
-   APUSetZN8(Work8);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ_WRITE);
+  b := APUGetByte(addr) + 1;
+  APUSetByte(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b);
 end;
 
-procedure ApuAD; // CMP Y,#00
+// $AD CMP Y, #imm
+procedure ApuAD;
 begin
-   Work8 := OP1;
-   CMP(IAPU.Registers.YA.Y, Work8);
-   Inc(IAPU.PC, 2);
+  CMP_Generic(IAPU.Registers.YA.Y, Immediate(ACC_READ));
 end;
 
-procedure ApuAE; // POP A
+// $AE POP A
+procedure ApuAE;
 begin
-   IAPU.Registers.YA.a := Pop;
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := Pop;
 end;
 
-procedure ApuAF; // MOV (X)+, A
+// $AF MOV (X)+, A
+procedure ApuAF;
 begin
-   APUSetByteDP(IAPU.Registers.YA.a, IAPU.Registers.X);
-   Inc(IAPU.Registers.X);
-   Inc(IAPU.PC);
+  APUSetByteZ(IAPU.Registers.YA.A, IAPU.Registers.X);
+  IAPU.Registers.X := IAPU.Registers.X + 1;
 end;
 
-procedure ApuB0; // BCS
+// $B0 BCS rel (Branch on Carry Set)
+procedure ApuB0;
 begin
-   Relative;
-   if IAPU.Carry then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-      APUShutdown;
-   end
-   else
-      Inc(IAPU.PC, 2);
+  Branch(IAPU.Carry);
 end;
 
+// $B1 TCALL 11
 procedure ApuB1;
 begin
-   TCALL(11);
+  TCALL(11);
 end;
 
-procedure ApuB2; // CLR1 dp.5
+// $B2 CLR1 dp.5
+procedure ApuB2;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 5), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - CLR1 é um opcode "ilegal"
 end;
 
+// $B3 BBC 3, dp, rel
 procedure ApuB3;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(5);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 3)) = 0);
 end;
 
-procedure ApuB4; // SBC A,dp+X
+// $B4 SBC A, dp+X
+procedure ApuB4;
+var
+  addr: Cardinal;
 begin
-   Work8 := APUGetByteDP(OP1 + IAPU.Registers.X);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  SBC(APUGetByteZ(addr));
 end;
 
-procedure ApuB5; // SBC A,abs+X
+// $B5 SBC A, addr+X
+procedure ApuB5;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   Work8 := APUGetByte(IAPU.Address);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_READ);
+  SBC(APUGetByte(addr));
 end;
 
-procedure ApuB6; // SBC A,abs+Y
+// $B6 SBC A, addr+Y
+procedure ApuB6;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   Work8 := APUGetByte(IAPU.Address);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_READ);
+  SBC(APUGetByte(addr));
 end;
 
-procedure ApuB7; // SBC A,(dp)+Y
+// $B7 SBC A, (dp)+Y
+procedure ApuB7;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   Work8 := APUGetByte(IAPU.Address);
-   SBC(IAPU.Registers.YA.a, Work8);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_READ);
+  SBC(APUGetByteZ(addr));
 end;
 
-procedure ApuB8; // SBC dp,#00
+// $B8 SBC dp, #imm
+procedure ApuB8;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := OP1;
-   W1 := APUGetByteDP(OP2);
-   SBC(W1, Work8);
-   APUSetByteDP(W1, OP2);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_READ_WRITE);
+  b := SBC_Generic(APUGetByteZ(addr), Immediate(ACC_READ));
+  APUSetByteZ(b, addr);
 end;
 
-procedure ApuB9; // SBC (X),(Y)
+// $B9 SBC (X), (Y)
+procedure ApuB9;
+var
+  b: Byte;
 begin
-   W1 := APUGetByteDP(IAPU.Registers.X);
-   Work8 := APUGetByteDP(IAPU.Registers.YA.Y);
-   SBC(W1, Work8);
-   APUSetByteDP(W1, IAPU.Registers.X);
-   Inc(IAPU.PC);
+  b := SBC_Generic(APUGetByteZ(IAPU.Registers.X), APUGetByteZ(IAPU.Registers.YA.Y));
+  APUSetByteZ(b, IAPU.Registers.X);
 end;
 
-procedure ApuBA; // MOVW YA,dp
+// $BA MOVW YA, dp
+procedure ApuBA;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := APUGetByteDP(OP1);
-   IAPU.Registers.YA.Y := APUGetByteDP(OP1 + 1);
-   APUSetZN16(IAPU.Registers.YA.w);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.W := APUGetWordZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.W = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuBB; // INC dp+X
+// $BB INC dp+X
+procedure ApuBB;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := APUGetByteDP(OP1 + IAPU.Registers.X) + 1;
-   APUSetByteDP(Work8, OP1 + IAPU.Registers.X);
-   APUSetZN8(Work8);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ_WRITE);
+  b := APUGetByteZ(addr) + 1;
+  APUSetByteZ(b, addr);
+  IAPU.Zero := Ord(b = 0);
+  APUCheckNegative(b);
 end;
 
-procedure ApuBC; // INC A
+// $BC INC A
+procedure ApuBC;
 begin
-   Inc(IAPU.Registers.YA.a);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.A + 1;
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuBD; // MOV SP,X
+// $BD MOV SP, X
+procedure ApuBD;
 begin
-   IAPU.Registers.S := IAPU.Registers.X;
-   Inc(IAPU.PC);
+  IAPU.Registers.S := IAPU.Registers.X;
 end;
 
-procedure ApuBE; // DAS
+// $BE DAS (Decimal Adjust for Subtraction)
+procedure ApuBE;
+var
+  A: Byte;
+  temp: Word;
 begin
-   if (IAPU.Registers.YA.a > $99) or (not IAPU.Carry) then
-   begin
-      IAPU.Registers.YA.a := IAPU.Registers.YA.a - $60;
-      IAPU.Carry := False;
-   end
-   else
-   begin
-      IAPU.Carry := True;
-   end;
-
-   if ((IAPU.Registers.YA.a and $0F) > 9) or not((IAPU.Registers.P and APU_HALF_CARRY) <> 0) then
-   begin
-      IAPU.Registers.YA.a := IAPU.Registers.YA.a - 6;
-   end;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  A := IAPU.Registers.YA.A;
+  if IAPU.Carry or (A > $99) then
+  begin
+    A := A - $60;
+    IAPU.Carry := True;
+  end;
+  if ((IAPU.Registers.P and APU_HALF_CARRY_FLAG) <> 0) or ((A and $0F) > 9) then
+  begin
+    A := A - 6;
+  end;
+  IAPU.Registers.YA.A := A;
+  IAPU.Zero := Ord(A = 0);
+  APUCheckNegative(A);
 end;
 
-procedure ApuBF; // MOV A,(X)+
+// $BF MOV A, (X)+
+procedure ApuBF;
 begin
-   IAPU.Registers.YA.a := APUGetByteDP(IAPU.Registers.X);
-   Inc(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := APUGetByteZ(IAPU.Registers.X);
+  IAPU.Registers.X := IAPU.Registers.X + 1;
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuC0; // DI
+// $C0 DI (Disable Interrupts)
+procedure ApuC0;
 begin
-   IAPU.Registers.P := IAPU.Registers.P and not APU_INTERRUPT;
-   Inc(IAPU.PC);
+  IAPU.Registers.P := IAPU.Registers.P and not APU_INTERRUPT_FLAG;
 end;
 
+// $C1 TCALL 12
 procedure ApuC1;
 begin
-   TCALL(12);
+  TCALL(12);
 end;
 
-procedure ApuC2; // SET1 dp.6
+// $C2 SET1 dp.6
+procedure ApuC2;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 6), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $C3 BBC 4, dp, rel
 procedure ApuC3;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(6);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 4)) = 0);
 end;
 
-procedure ApuC4; // MOV dp,A
+// $C4 MOV dp, A
+procedure ApuC4;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.YA.a, OP1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.YA.A, addr);
 end;
 
-procedure ApuC5; // MOV abs,A
+// $C5 MOV addr, A
+procedure ApuC5;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   APUSetByte(IAPU.Registers.YA.a, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_WRITE);
+  APUSetByte(IAPU.Registers.YA.A, addr);
 end;
 
-procedure ApuC6; // MOV (X), A
+// $C6 MOV (X), A
+procedure ApuC6;
 begin
-   APUSetByteDP(IAPU.Registers.YA.a, IAPU.Registers.X);
-   Inc(IAPU.PC);
+  APUSetByteZ(IAPU.Registers.YA.A, IAPU.Registers.X);
 end;
 
-procedure ApuC7; // MOV (dp+X),A
+// $C7 MOV (dp+X), A
+procedure ApuC7;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   APUSetByte(IAPU.Registers.YA.a, IAPU.Address);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.YA.A, addr);
 end;
 
-procedure ApuC8; // CMP X,#00
+// $C8 CMP X, #imm
+procedure ApuC8;
 begin
-   CMP(IAPU.Registers.X, OP1);
-   Inc(IAPU.PC, 2);
+  CMP_Generic(IAPU.Registers.X, Immediate(ACC_READ));
 end;
 
-procedure ApuC9; // MOV abs,X
+// $C9 MOV addr, X
+procedure ApuC9;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   APUSetByte(IAPU.Registers.X, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_WRITE);
+  APUSetByte(IAPU.Registers.X, addr);
 end;
 
-procedure ApuCA; // MOV1 membit,C
+// $CA MOV1 addr:bit, C
+procedure ApuCA;
 begin
-   MemBit;
-   if IAPU.Carry then
-      APUSetByte(APUGetByte(IAPU.Address) or (1 shl IAPU.Bit), IAPU.Address)
-   else
-      APUSetByte(APUGetByte(IAPU.Address) and not(1 shl IAPU.Bit), IAPU.Address);
-   Inc(IAPU.PC, 3);
+  MOV1_M(Absolute(ACC_READ));
 end;
 
-procedure ApuCB; // MOV dp,Y
+// $CB MOV dp, Y
+procedure ApuCB;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.YA.Y, OP1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.YA.Y, addr);
 end;
 
-procedure ApuCC; // MOV abs,Y
+// $CC MOV addr, Y
+procedure ApuCC;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   APUSetByte(IAPU.Registers.YA.Y, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_WRITE);
+  APUSetByte(IAPU.Registers.YA.Y, addr);
 end;
 
-procedure ApuCD; // MOV X,#00
+// $CD MOV Y, #imm
+procedure ApuCD;
 begin
-   IAPU.Registers.X := OP1;
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.YA.Y := Immediate(ACC_READ);
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuCE; // POP X
+// $CE POP X
+procedure ApuCE;
 begin
-   IAPU.Registers.X := Pop;
-   Inc(IAPU.PC);
+  IAPU.Registers.X := Pop;
 end;
 
-procedure ApuCF; // MUL YA
+// $CF MUL YA
+procedure ApuCF;
+var
+  res: Word;
 begin
-   IAPU.Registers.YA.w := Word(IAPU.Registers.YA.a) * IAPU.Registers.YA.Y;
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.PC);
+  res := IAPU.Registers.YA.Y * IAPU.Registers.YA.A;
+  IAPU.Registers.YA.W := res;
+  IAPU.Zero := Ord(res = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuD0; // BNE
+// $D0 BNE rel (Branch on Not Equal)
+procedure ApuD0;
 begin
-   Relative;
-   if not IAPU.Zero then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-      APUShutdown;
-   end
-   else
-      Inc(IAPU.PC, 2);
+  Branch(IAPU.Zero = 0);
 end;
 
+// $D1 TCALL 13
 procedure ApuD1;
 begin
-   TCALL(13);
+  TCALL(13);
 end;
 
-procedure ApuD2; // CLR1 dp.6
+// $D2 CLR1 dp.6
+procedure ApuD2;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 6), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - CLR1 é um opcode "ilegal"
 end;
 
+// $D3 BBC 5, dp, rel
 procedure ApuD3;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(6);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 5)) = 0);
 end;
 
+// $D4 MOV dp+X, A
 procedure ApuD4;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.YA.a, OP1 + IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.YA.A, addr);
 end;
 
+// $D5 MOV addr+X, A
 procedure ApuD5;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   APUSetByte(IAPU.Registers.YA.a, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_WRITE);
+  APUSetByte(IAPU.Registers.YA.A, addr);
 end;
 
+// $D6 MOV addr+Y, A
 procedure ApuD6;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   APUSetByte(IAPU.Registers.YA.a, IAPU.Address);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_WRITE);
+  APUSetByte(IAPU.Registers.YA.A, addr);
 end;
 
+// $D7 MOV (dp)+Y, A
 procedure ApuD7;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   APUSetByte(IAPU.Registers.YA.a, IAPU.Address);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.YA.A, addr);
 end;
 
-procedure ApuD8; // MOV dp,X
+// $D8 MOV dp, X
+procedure ApuD8;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.X, OP1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.X, addr);
 end;
 
-procedure ApuD9; // MOV dp+Y,X
+// $D9 MOV dp+Y, X
+procedure ApuD9;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.X, OP1 + IAPU.Registers.YA.Y);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedY(ACC_WRITE);
+  APUSetByteZ(IAPU.Registers.X, addr);
 end;
 
-procedure ApuDA; // MOVW dp,YA
+// $DA MOVW dp, YA
+procedure ApuDA;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.YA.a, OP1);
-   APUSetByteDP(IAPU.Registers.YA.Y, OP1 + 1);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_WRITE);
+  APUSetWordZ(IAPU.Registers.YA.W, addr);
 end;
 
-procedure ApuDB; // MOV dp+X,Y
+// $DB MOV X, dp+Y
+procedure ApuDB;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(IAPU.Registers.YA.Y, OP1 + IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedY(ACC_READ);
+  IAPU.Registers.X := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure ApuDC; // DEC Y
+// $DC DEC Y
+procedure ApuDC;
 begin
-   Dec(IAPU.Registers.YA.Y);
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.Y := IAPU.Registers.YA.Y - 1;
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuDD; // MOV A,Y
+// $DD MOV A, Y
+procedure ApuDD;
 begin
-   IAPU.Registers.YA.a := IAPU.Registers.YA.Y;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := IAPU.Registers.YA.Y;
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuDE; // CBNE dp+X,rel
+// $DE CBNE addr, rel
+procedure ApuDE;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   Work8 := OP1 + IAPU.Registers.X;
-   Relative2;
-   if APUGetByteDP(Work8) <> IAPU.Registers.YA.a then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-      APUShutdown;
-   end
-   else
-      Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  b := APUGetByte(addr);
+  Branch(IAPU.Registers.YA.A <> b);
 end;
 
-procedure ApuDF; // DAA
+// $DF DAA (Decimal Adjust for Addition)
+procedure ApuDF;
+var
+  A: Byte;
+  temp: Word;
 begin
-   if (IAPU.Registers.YA.a > $99) or IAPU.Carry then
-   begin
-      IAPU.Registers.YA.a := IAPU.Registers.YA.a + $60;
-      IAPU.Carry := True;
-   end
-   else
-   begin
-      IAPU.Carry := False;
-   end;
-
-   if ((IAPU.Registers.YA.a and $0F) > 9) or ((IAPU.Registers.P and APU_HALF_CARRY) <> 0) then
-   begin
-      IAPU.Registers.YA.a := IAPU.Registers.YA.a + 6;
-   end;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  A := IAPU.Registers.YA.A;
+  if IAPU.Carry or (A > $99) then
+  begin
+    A := A + $60;
+    IAPU.Carry := True;
+  end;
+  if ((IAPU.Registers.P and APU_HALF_CARRY_FLAG) <> 0) or ((A and $0F) > 9) then
+  begin
+    A := A + 6;
+  end;
+  IAPU.Registers.YA.A := A;
+  IAPU.Zero := Ord(A = 0);
+  APUCheckNegative(A);
 end;
 
-procedure ApuE0; // CLRV
+// $E0 CLV (Clear Overflow)
+procedure ApuE0;
 begin
-   IAPU.Registers.P := IAPU.Registers.P and not APU_HALF_CARRY;
-   IAPU.Overflow := False;
-   Inc(IAPU.PC);
+  IAPU.Overflow := False;
 end;
 
+// $E1 TCALL 14
 procedure ApuE1;
 begin
-   TCALL(14);
+  TCALL(14);
 end;
 
-procedure ApuE2; // SET1 dp.7
+// $E2 SET1 dp.7
+procedure ApuE2;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) or (1 shl 7), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - SET1 é um opcode "ilegal"
 end;
 
+// $E3 BBC 6, dp, rel
 procedure ApuE3;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBS_Bit(7);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 6)) = 0);
 end;
 
-procedure ApuE4; // MOV A,dp
+// $E4 MOV A, dp
+procedure ApuE4;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuE5; // MOV A,abs
+// $E5 MOV A, addr
+procedure ApuE5;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   IAPU.Registers.YA.a := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByte(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuE6; // MOV A,(X)
+// $E6 MOV A, (X)
+procedure ApuE6;
 begin
-   IAPU.Registers.YA.a := APUGetByteDP(IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.A := APUGetByteZ(IAPU.Registers.X);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuE7; // MOV A,(dp+X)
+// $E7 MOV A, (dp+X)
+procedure ApuE7;
+var
+  addr: Cardinal;
 begin
-   IndexedXIndirect;
-   IAPU.Registers.YA.a := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuE8; // MOV A,#00
+// $E8 MOV X, #imm
+procedure ApuE8;
 begin
-   IAPU.Registers.YA.a := OP1;
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  IAPU.Registers.X := Immediate(ACC_READ);
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure ApuE9; // MOV X,abs
+// $E9 MOV X, addr
+procedure ApuE9;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   IAPU.Registers.X := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  IAPU.Registers.X := APUGetByte(addr);
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure ApuEA; // NOT1 membit
+// $EA NOT1 addr:bit
+procedure ApuEA;
 begin
-   MemBit;
-   APUSetByte(APUGetByte(IAPU.Address) xor (1 shl IAPU.Bit), IAPU.Address);
-   Inc(IAPU.PC, 3);
+  NOT1(Absolute(ACC_READ));
 end;
 
-procedure ApuEB; // MOV Y,dp
+// $EB MOV Y, dp
+procedure ApuEB;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.Y := APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.Y := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuEC; // MOV Y,abs
+// $EC MOV Y, addr
+procedure ApuEC;
+var
+  addr: Cardinal;
 begin
-   Absolute;
-   IAPU.Registers.YA.Y := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.PC, 3);
+  addr := Absolute(ACC_READ);
+  IAPU.Registers.YA.Y := APUGetByte(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuED; // NOTC
+// $ED NOTC
+procedure ApuED;
 begin
-   IAPU.Carry := not IAPU.Carry;
-   Inc(IAPU.PC);
+  IAPU.Carry := not IAPU.Carry;
 end;
 
-procedure ApuEE; // POP Y
+// $EE POP Y
+procedure ApuEE;
 begin
-   IAPU.Registers.YA.Y := Pop;
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.Y := Pop;
 end;
 
-procedure ApuEF_FF; // SLEEP / STOP
+// $EF SLEEP
+procedure ApuEF;
 begin
-   APU.TimerEnabled[0] := False;
-   APU.TimerEnabled[1] := False;
-   APU.TimerEnabled[2] := False;
-   IAPU.Executing := False;
+  // Emula SLEEP esperando por uma interrupção
+  IAPU.WaitCounter := IAPU.WaitCounter + 1;
+  APU.Cycles := CPU.Cycles;
 end;
 
-procedure ApuF0; // BEQ
+// $F0 BEQ rel (Branch on Equal)
+procedure ApuF0;
 begin
-   Relative;
-   if IAPU.Zero then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-      APUShutdown;
-   end
-   else
-      Inc(IAPU.PC, 2);
+  Branch(IAPU.Zero <> 0);
 end;
 
+// $F1 TCALL 15
 procedure ApuF1;
 begin
-   TCALL(15);
+  TCALL(15);
 end;
 
-procedure ApuF2; // CLR1 dp.7
+// $F2 CLR1 dp.7
+procedure ApuF2;
 begin
-   APUSetByteDP(APUGetByteDP(OP1) and not(1 shl 7), OP1);
-   Inc(IAPU.PC, 2);
+  // Placeholder - CLR1 é um opcode "ilegal"
 end;
 
+// $F3 BBC 7, dp, rel
 procedure ApuF3;
+var
+  addr: Cardinal;
+  b: Byte;
 begin
-   BBC_Bit(7);
+  addr := Direct(ACC_READ);
+  b := APUGetByteZ(addr);
+  Branch((b and (1 shl 7)) = 0);
 end;
 
-procedure ApuF4; // MOV A,dp+X
+// $F4 MOV A, dp+X
+procedure ApuF4;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.a := APUGetByteDP(OP1 + IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuF5; // MOV A,abs+X
+// $F5 MOV A, addr+X
+procedure ApuF5;
+var
+  addr: Cardinal;
 begin
-   AbsoluteX;
-   IAPU.Registers.YA.a := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedX(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByte(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuF6; // MOV A,abs+Y
+// $F6 MOV A, addr+Y
+procedure ApuF6;
+var
+  addr: Cardinal;
 begin
-   AbsoluteY;
-   IAPU.Registers.YA.a := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 3);
+  addr := AbsoluteIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByte(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuF7; // MOV A,(dp)+Y
+// $F7 MOV A, (dp)+Y
+procedure ApuF7;
+var
+  addr: Cardinal;
 begin
-   IndirectIndexedY;
-   IAPU.Registers.YA.a := APUGetByte(IAPU.Address);
-   APUSetZN8(IAPU.Registers.YA.a);
-   Inc(IAPU.PC, 2);
+  addr := IndirectIndexedY(ACC_READ);
+  IAPU.Registers.YA.A := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.A = 0);
+  APUCheckNegative(IAPU.Registers.YA.A);
 end;
 
-procedure ApuF8; // MOV X,dp
+// $F8 MOV X, dp
+procedure ApuF8;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.X := APUGetByteDP(OP1);
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.X := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure ApuF9; // MOV X,dp+Y
+// $F9 MOV X, dp+Y
+procedure ApuF9;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.X := APUGetByteDP(OP1 + IAPU.Registers.YA.Y);
-   APUSetZN8(IAPU.Registers.X);
-   Inc(IAPU.PC, 2);
+  addr := DirectIndexedY(ACC_READ);
+  IAPU.Registers.X := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.X = 0);
+  APUCheckNegative(IAPU.Registers.X);
 end;
 
-procedure ApuFA; // MOV dp(dest),dp(src)
+// $FA MOV dp, YA
+procedure ApuFA;
+var
+  addr: Cardinal;
 begin
-   APUSetByteDP(APUGetByteDP(OP1), OP2);
-   Inc(IAPU.PC, 3);
+  addr := Direct(ACC_WRITE);
+  APUSetWordZ(IAPU.Registers.YA.W, addr);
 end;
 
-procedure ApuFB; // MOV Y,dp+X
+// $FB MOV Y, dp
+procedure ApuFB;
+var
+  addr: Cardinal;
 begin
-   IAPU.Registers.YA.Y := APUGetByteDP(OP1 + IAPU.Registers.X);
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.PC, 2);
+  addr := Direct(ACC_READ);
+  IAPU.Registers.YA.Y := APUGetByteZ(addr);
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuFC; // INC Y
+// $FC INC Y
+procedure ApuFC;
 begin
-   Inc(IAPU.Registers.YA.Y);
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.WaitCounter);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.Y := IAPU.Registers.YA.Y + 1;
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuFD; // MOV Y,A
+// $FD MOV Y, A
+procedure ApuFD;
 begin
-   IAPU.Registers.YA.Y := IAPU.Registers.YA.a;
-   APUSetZN8(IAPU.Registers.YA.Y);
-   Inc(IAPU.PC);
+  IAPU.Registers.YA.Y := IAPU.Registers.YA.A;
+  IAPU.Zero := Ord(IAPU.Registers.YA.Y = 0);
+  APUCheckNegative(IAPU.Registers.YA.Y);
 end;
 
-procedure ApuFE; // DBNZ Y,rel
+// $FE DBNE Y, rel
+procedure ApuFE;
+var
+  b: Byte;
 begin
-   Relative;
-   Dec(IAPU.Registers.YA.Y);
-   if IAPU.Registers.YA.Y <> 0 then
-   begin
-      IAPU.PC := IAPU.RAM + Word(Int16);
-      APU.Cycles := APU.Cycles + (IAPU.OneCycle shl 1);
-   end
-   else
-      Inc(IAPU.PC, 2);
+  b := IAPU.Registers.YA.Y - 1;
+  IAPU.Registers.YA.Y := b;
+  Branch(b <> 0);
 end;
 
-procedure InitializeAPUOpcodes;
+// $FF STOP
+procedure ApuFF;
 begin
+  IAPU.WaitCounter := $FFFFFFFF;
+  APU.Cycles := CPU.Cycles;
+end;
+
+//******************************************************************************
+// Loop de Execução Principal e Rotinas de Controle
+//******************************************************************************
+
+{
+  InitSPC700
+  ------------------------------------------------------------------------------
+  Inicializa a tabela de opcodes e a tabela de ciclos. Este procedimento
+  deve ser chamado uma vez na inicialização do emulador.
+}
+procedure InitSPC700;
+var
+   i: Integer;
+begin
+   // Preenche a tabela de opcodes com os ponteiros para os procedimentos
    ApuOpcodes[  0] := @Apu00; ApuOpcodes[  1] := @Apu01; ApuOpcodes[  2] := @Apu02; ApuOpcodes[  3] := @Apu03; ApuOpcodes[  4] := @Apu04; ApuOpcodes[  5] := @Apu05; ApuOpcodes[  6] := @Apu06; ApuOpcodes[  7] := @Apu07;
    ApuOpcodes[  8] := @Apu08; ApuOpcodes[  9] := @Apu09; ApuOpcodes[ 10] := @Apu0A; ApuOpcodes[ 11] := @Apu0B; ApuOpcodes[ 12] := @Apu0C; ApuOpcodes[ 13] := @Apu0D; ApuOpcodes[ 14] := @Apu0E; ApuOpcodes[ 15] := @Apu0F;
    ApuOpcodes[ 16] := @Apu10; ApuOpcodes[ 17] := @Apu11; ApuOpcodes[ 18] := @Apu12; ApuOpcodes[ 19] := @Apu13; ApuOpcodes[ 20] := @Apu14; ApuOpcodes[ 21] := @Apu15; ApuOpcodes[ 22] := @Apu16; ApuOpcodes[ 23] := @Apu17;
@@ -2268,9 +3060,117 @@ begin
    ApuOpcodes[208] := @ApuD0; ApuOpcodes[209] := @ApuD1; ApuOpcodes[210] := @ApuD2; ApuOpcodes[211] := @ApuD3; ApuOpcodes[212] := @ApuD4; ApuOpcodes[213] := @ApuD5; ApuOpcodes[214] := @ApuD6; ApuOpcodes[215] := @ApuD7;
    ApuOpcodes[216] := @ApuD8; ApuOpcodes[217] := @ApuD9; ApuOpcodes[218] := @ApuDA; ApuOpcodes[219] := @ApuDB; ApuOpcodes[220] := @ApuDC; ApuOpcodes[221] := @ApuDD; ApuOpcodes[222] := @ApuDE; ApuOpcodes[223] := @ApuDF;
    ApuOpcodes[224] := @ApuE0; ApuOpcodes[225] := @ApuE1; ApuOpcodes[226] := @ApuE2; ApuOpcodes[227] := @ApuE3; ApuOpcodes[228] := @ApuE4; ApuOpcodes[229] := @ApuE5; ApuOpcodes[230] := @ApuE6; ApuOpcodes[231] := @ApuE7;
-   ApuOpcodes[232] := @ApuE8; ApuOpcodes[233] := @ApuE9; ApuOpcodes[234] := @ApuEA; ApuOpcodes[235] := @ApuEB; ApuOpcodes[236] := @ApuEC; ApuOpcodes[237] := @ApuED; ApuOpcodes[238] := @ApuEE; ApuOpcodes[239] := @OpEF_FF;
+   ApuOpcodes[232] := @ApuE8; ApuOpcodes[233] := @ApuE9; ApuOpcodes[234] := @ApuEA; ApuOpcodes[235] := @ApuEB; ApuOpcodes[236] := @ApuEC; ApuOpcodes[237] := @ApuED; ApuOpcodes[238] := @ApuEE; ApuOpcodes[239] := @ApuEF;
    ApuOpcodes[240] := @ApuF0; ApuOpcodes[241] := @ApuF1; ApuOpcodes[242] := @ApuF2; ApuOpcodes[243] := @ApuF3; ApuOpcodes[244] := @ApuF4; ApuOpcodes[245] := @ApuF5; ApuOpcodes[246] := @ApuF6; ApuOpcodes[247] := @ApuF7;
-   ApuOpcodes[248] := @ApuF8; ApuOpcodes[249] := @ApuF9; ApuOpcodes[250] := @ApuFA; ApuOpcodes[251] := @ApuFB; ApuOpcodes[252] := @ApuFC; ApuOpcodes[253] := @ApuFD; ApuOpcodes[254] := @ApuFE; ApuOpcodes[255] := @OpEF_FF;
+   ApuOpcodes[248] := @ApuF8; ApuOpcodes[249] := @ApuF9; ApuOpcodes[250] := @ApuFA; ApuOpcodes[251] := @ApuFB; ApuOpcodes[252] := @ApuFC; ApuOpcodes[253] := @ApuFD; ApuOpcodes[254] := @ApuFE; ApuOpcodes[255] := @ApuFF;
+
+   // Preenche a tabela de ciclos com base na tabela de comprimentos
+   for i := 0 to 255 do
+   begin
+      APUCycles[i] := APUCycleLengths[i];
+   end;
 end;
+
+function APUGetCPUCycles: Integer;
+begin
+   Result := CPU.Cycles - APU.Cycles;
+end;
+
+{
+  APUMainLoop
+  ------------------------------------------------------------------------------
+  O motor de execução do SPC700. Ele executa instruções em um loop,
+  sincronizado com a CPU principal.
+}
+procedure APUMainLoop;
+var
+   opcode: Byte;
+begin
+   APU.Cycles := APU.Cycles + APUGetCPUCycles;
+
+   while APU.Cycles > 0 do
+   begin
+      if IAPU.WaitCounter > 0 then
+      begin
+         // Simula estado de SLEEP ou STOP
+         if APU.Cycles > 256 then
+            APU.Cycles := APU.Cycles - 256
+         else
+            APU.Cycles := 0;
+         Continue;
+      end;
+
+      // Busca o opcode no endereço apontado pelo Program Counter
+      opcode := IAPU.PC^;
+      Inc(IAPU.PC);
+
+      // Subtrai os ciclos desta instrução do total
+      APU.Cycles := APU.Cycles - APUCycles[opcode];
+
+      // Executa o procedimento do opcode correspondente
+      if Assigned(ApuOpcodes[opcode]) then
+         ApuOpcodes[opcode]()
+      else
+         // Trata opcode ilegal, se necessário
+         ;
+   end;
+end;
+
+{
+  ResetAPU
+  ------------------------------------------------------------------------------
+  Reseta o estado do processador SPC700 e da APU para seus valores iniciais.
+}
+procedure ResetAPU;
+const
+   APUROM: array[0..63] of Byte = ($CD, $EF, $BD, $E8, $00, $C6, $1D, $D0, $FC, $8F, $AA, $F4, $8F, $BB, $F5, $78,
+                                   $CC, $F4, $D0, $FB, $2F, $19, $EB, $F4, $D0, $FC, $7E, $F4, $D0, $0B, $E4, $F5,
+                                   $CB, $F4, $D7, $00, $FC, $D0, $F3, $AB, $01, $10, $EF, $7E, $F4, $10, $EB, $BA,
+                                   $F6, $DA, $00, $BA, $F4, $C4, $F4, $DD, $5D, $D0, $DB, $1F, $00, $00, $C0, $FF);
+var
+   i: Integer;
+begin
+  // Reseta o estado da APU
+  FillChar(APU, SizeOf(APU), 0);
+  Settings.APUEnabled := True;
+
+  // Copia o IPL ROM da APU para os últimos 64 bytes da RAM
+  Move(APUROM[0], IAPU.RAM[$FFC0], 64);
+  Move(APUROM[0], APU.ExtraRAM[0], 64);
+
+  // Inicializa os registradores do SPC700
+  IAPU.Registers.PC := IAPU.RAM[$FFFE] or (IAPU.RAM[$FFFF] shl 8);
+  IAPU.PC := @IAPU.RAM[IAPU.Registers.PC];
+  IAPU.Registers.YA.W := 0;
+  IAPU.Registers.X := 0;
+  IAPU.Registers.P := APU_ZERO_FLAG; // Flag Z setada, as outras limpas
+  IAPU.Registers.S := $EF;
+  APUUnpackStatus;
+
+  // Reseta o estado de execução e timers
+  IAPU.Executing := Settings.APUEnabled;
+  IAPU.WaitAddress1 := nil;
+  IAPU.WaitAddress2 := nil;
+  IAPU.WaitCounter := 0;
+
+  // Configuração dos timers internos da APU
+  EXT.t64Cnt := 0;
+  IAPU.RAM[$F0] := $0A;
+  IAPU.RAM[$F1] := $B0;
+  APU.ShowROM := True;
+
+  for i := 0 to 2 do
+  begin
+    APU.TimerEnabled[i] := False;
+    APU.Timer[i] := 0;
+    APU.TimerTarget[i] := 0;
+  end;
+
+  // Sincronização inicial com a CPU
+  APU.Cycles := 0;
+end;
+
+initialization
+   InitSPC700;
 
 end.

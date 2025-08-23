@@ -3,370 +3,147 @@
 interface
 
 uses
-   SNES.DataTypes, SNES.Globals;
+   SNES.DataTypes,
+   SNES.Globals;
 
-const
-   // --- Constantes de Flags de Mixagem (de snesapu.h) ---
-   MFLG_MUTE = $01; // Silenciar canal
-   MFLG_KOFF = $02; // Canal em processo de Key Off
-   MFLG_OFF  = $04; // Canal inativo
-   MFLG_END  = $08; // Bloco final da amostra foi tocado
-   MFLG_SSRC = $10; // Iniciar/Reiniciar a fonte da amostra (Start Source)
+// Procedimento principal para inicializar o estado do DSP.
+procedure InitDSP;
 
-   // --- Constantes de Precisão de Envelope (de snesapu.h) ---
-   E_SHIFT = 4; // Deslocamento para obter valor de 8 bits do envelope
-
-type
-   // --- Estruturas de `soundux.h` ---
-   TSoundState = (SOUND_SILENT, SOUND_ATTACK, SOUND_DECAY, SOUND_SUSTAIN, SOUND_RELEASE, SOUND_GAIN, SOUND_INCREASE_LINEAR,
-                  SOUND_INCREASE_BENT_LINE, SOUND_DECREASE_LINEAR, SOUND_DECREASE_EXPONENTIAL);
-
-   TChannelMode = (MODE_NONE, MODE_ADSR, MODE_RELEASE, MODE_GAIN, MODE_INCREASE_LINEAR, MODE_INCREASE_BENT_LINE,
-                   MODE_DECREASE_LINEAR, MODE_DECREASE_EXPONENTIAL);
-
-   TSoundType = (SOUND_SAMPLE, SOUND_NOISE);
-
-   // Armazena o estado de um canal para interface ou save state
-   TChannel = packed record
-      next_sample: SmallInt;
-      decoded: array[0..15] of SmallInt;
-      envx: Integer;
-      mode: TChannelMode;
-      state: TSoundState;
-      type_: TSoundType;
-      count: Cardinal;
-      block_pointer: Cardinal;
-      sample_pointer: Cardinal;
-      block: PSmallInt;
-   end;
-
-   // Estrutura de alto nível para o estado do som
-   TSSoundData = packed record
-      echo_buffer_size: Integer;
-      echo_enable: Integer;
-      echo_feedback: Integer;
-      echo_ptr: Integer;
-      echo_write_enabled: Integer;
-      pitch_mod: Integer;
-      channels: array[0..NUM_CHANNELS - 1] of TChannel;
-   end;
-
-   // --- Estrutura principal de processamento do DSP (de snesapu.c) ---
-   // Representa o estado interno de um dos 8 canais de áudio (vozes) do DSP.
-   TVoiceMix = packed record
-      // Forma de Onda (Waveform)
-      bHdr: Byte;      // Cabeçalho do bloco BRR atual
-      mFlg: Byte;      // Flags de mixagem (MFLG_...)
-      bCur: Word;      // Ponteiro para o bloco BRR atual na ARAM
-      bMixStart: Word; // Ponteiro de início para a mixagem
-      bStart: Word;    // Ponteiro de início da amostra
-
-      // Envelope
-      eAdj: Integer;   // Valor a ser ajustado na altura do envelope
-      eDest: Integer;  // Destino do envelope
-      eVal: Integer;   // Valor atual do envelope
-      eDec: Cardinal;  // Parte decimal do passo do envelope (ponto fixo .16)
-      eRate: Cardinal; // Taxa de ajuste do envelope (ponto fixo 16.16)
-      eMode: Byte;     // Modo atual do envelope (ADSR, Gain, etc.)
-      eRIdx: Byte;     // Índice na tabela de taxas (0-31)
-      _pad1: Byte;     // Padding para alinhamento
-
-      // Amostras (Samples)
-      sIdx: ShortInt;  // Índice da amostra atual no buffer sBuf
-      sP1: Integer;    // Última amostra descomprimida (anterior 1)
-      sP2: Integer;    // Penúltima amostra descomprimida (anterior 2)
-      sBuf: array[0..31] of SmallInt; // Buffer para os 16 samples descomprimidos do bloco BRR
-
-      // Mixagem
-      mChnL: Integer;  // Volume do canal esquerdo (-24.7)
-      mChnR: Integer;  // Volume do canal direito (-24.7)
-      mOut: Integer;   // Última amostra de saída antes do volume do canal (usado para modulação de pitch)
-      mDec: Cardinal;  // Parte decimal do pitch (ponto fixo .16) (usado como delta para interpolação)
-      mOrgP: Cardinal; // Valor original do pitch lido do DSP
-      mOrgRate: Cardinal; // Taxa de pitch antes da modulação (16.16)
-      mRate: Cardinal;    // Taxa de pitch após a modulação (16.16)
-   end;
-
-var
-   // --- Variáveis de Estado Globais do DSP ---
-   SoundData: TSSoundData; // Estado de alto nível (de soundux.h)
-   mix: array[0..7] of TVoiceMix; // Estado interno dos 8 canais de som
-   voiceKon: Byte; // Máscara de bits dos canais com Key On
-
-   // Volumes
-   volMainL: Integer;
-   volMainR: Integer;
-   volEchoL: Integer;
-   volEchoR: Integer;
-
-   // Eco
-   echoStart: Cardinal;
-   echoDel: Cardinal;
-   echoCur: Cardinal;
-   echoFB: Integer;
-
-   // Ruído
-   nSmp: Integer;
-   nDec: SmallInt;
-   nRate: SmallInt;
-
-   // Filtro de Eco (FIR)
-   firCur: Byte;
-   disEcho: Byte;
-   FilterTaps: array[0..7] of ShortInt;
-   Echo: array[0..ECHOBUF - 1] of Integer;
-   Loop: array[0..FIRBUF - 1] of SmallInt;
-
-// --- Procedimentos e Funções Públicas da Unit ---
-procedure InitAPUDSP;
-procedure ResetAPUDSP;
-procedure SetPlaybackRate(rate: Integer);
-procedure StoreAPUDSP;
-procedure RestoreAPUDSP;
-procedure SetAPUDSPAmp(amp: Integer);
-procedure MixSamples(pBuf: PSmallInt; num: Integer);
+// Procedimento chamado pela CPU para escrever em um registrador do DSP.
 procedure APUDSPIn(address: Byte; data: Byte);
-procedure SetEchoEnable(byte: Byte);
-procedure SetEchoFeedback(feedback: Integer);
-procedure SetEchoDelay(rate, delay: Integer);
-procedure SetFilterCoefficient(tap, value: Integer);
-procedure ResetSound(full: Boolean);
-procedure FixSoundAfterSnapshotLoad;
+
+// Procedimento principal que processa 'cycles' do DSP.
+procedure DSPProcess(cycles: Cardinal);
+
+// Procedimento que mixa os 8 canais e retorna um par de amostras estéreo.
+procedure DSPStereo(var l, r: Integer);
+
+// Procedimento para resetar o estado do DSP.
+procedure ResetDSP;
 
 implementation
 
+uses
+   System.SysUtils, System.Math;
+
 type
-   // Tipo procedural para o nosso jump table de handlers
-   TDSPRegWriteHandler = procedure(channel: Integer; data: Byte);
+   TDSPRegFunc = procedure(channel: Integer; val: Byte);
 
 var
-   // Tabela de ponteiros para os procedimentos que manipulam a escrita nos registradores do DSP
-   dspRegs: array[0..$7F] of TDSPRegWriteHandler;
+   // --- Variáveis de Estado Global ---
+   mMVolL, mMVolR: Byte;
+   mEVolL, mEVolR: Byte;
+   mEFB: Byte;
+   mDIR: Byte;
+   mESA: Byte;
+   mEDL: Byte;
+   voiceKon: Byte;
+   disEcho: Byte;
+   dspRegs: array [0 .. 127] of TDSPRegFunc;
+   mix: array [0 .. 7] of TVoiceMix;
 
-const
-   // Tabela para converter o modo de envelope do DSP para o nosso enum TSoundState
-   SAtoEMode: array[0..255] of TSoundState = (
-      SOUND_SILENT, // 0 - E_DEC
-      SOUND_DECREASE_EXPONENTIAL, // 1 - E_EXP
-      SOUND_INCREASE_LINEAR, // 2 - E_INC
-      SOUND_SILENT, // 3
-      SOUND_SILENT, // 4
-      SOUND_SILENT, // 5
-      SOUND_INCREASE_BENT_LINE, // 6 - E_BENT
-      SOUND_SILENT, // 7
-      SOUND_RELEASE, // 8 - E_REL
-      SOUND_SUSTAIN, // 9 - E_SUST
-      SOUND_ATTACK, // 10 - E_ATT
-      SOUND_SILENT, // 11
-      SOUND_SILENT, // 12
-      SOUND_DECAY, // 13 - E_DECAY
-      // O resto é preenchido com SOUND_SILENT
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT,
-      SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT, SOUND_SILENT);
+   // --- Tabelas de Lookup ---
+   rateTab: array [0 .. 31] of Cardinal = ($FFFFFFFF, $FFFFFFFF, $00004000, $00003000, $00002800, $00002000, $00001800, $00001400, $00001000,
+                                           $00000C00, $00000A00, $00000800, $00000700, $00000600, $00000500, $00000480, $00000400, $00000380,
+                                           $00000300, $00000280, $00000200, $000001C0, $00000180, $00000140, $00000100, $000000E0, $000000C0,
+                                           $000000A0, $00000080, $00000070, $00000060, $00000050);
 
-// --- Rotinas Auxiliares de Envelope (Porte de snesapu.c) ---
+   sustainTab: array [0 .. 31] of Cardinal; // Tabela de taxa para Sustain
+   attackTab: array [0 .. 15] of Cardinal;  // Tabela de taxa para Attack
+   // Tabela de interpolação para decodificação de amostras BRR
+   brrTab: array [0 .. 511] of SmallInt;
+   echoBuffer: array [0 .. ECHOBUF - 1] of SmallInt;
+   echoWritePtr, echoReadPtr: Cardinal;
+   echoLength: Cardinal;
 
-procedure ChgSus(channel: Integer); forward;
-procedure ChgDec(channel: Integer); forward;
-procedure ChgAtt(channel: Integer); forward;
 
-procedure ChgADSR(channel: Integer); inline;
+function Clamp(val, min, max: Integer): Integer; inline;
 begin
-   case mix[channel].eMode of
-      10: ChgAtt(channel); // E_ATT
-      13: ChgDec(channel); // E_DECAY
-      9, (128 or 9): if mix[channel].eVal > 0 then ChgSus(channel); // E_SUST, E_IDLE or E_SUST
-   end;
-end;
-
-procedure ChgGain(channel: Integer); inline;
-const
-   A_GAIN = 1 shl E_SHIFT;
-   A_LIN  = (128 * A_GAIN) div 64;
-   D_MIN = 0;
-   D_ATTACK = (128 * A_GAIN) - 1;
-   D_BENT = (128 * A_GAIN * 3) div 4;
-begin
-   if (APU.DSP[chs[channel].o + APU_GAIN] and $80) = 0 then // Gain direto?
-   begin
-      mix[channel].eMode := Ord(SOUND_GAIN);
-      mix[channel].eRIdx := 0;
-      mix[channel].eRate := rateTab[mix[channel].eRIdx];
-      mix[channel].eAdj  := 0; // A_EXP
-      mix[channel].eVal  := (APU.DSP[chs[channel].o + APU_GAIN] and $7F) * A_GAIN;
-      mix[channel].eDest := mix[channel].eVal;
-      Exit;
-   end;
-
-   case APU.DSP[chs[channel].o + APU_GAIN] and $60 of
-      $00: // Decrease Linear
-      begin
-         mix[channel].eRIdx := APU.DSP[chs[channel].o + APU_GAIN] and $1F;
-         mix[channel].eRate := rateTab[mix[channel].eRIdx];
-         mix[channel].eAdj  := A_LIN;
-         mix[channel].eDest := D_MIN;
-         if (mix[channel].eRate = 0) or (mix[channel].eVal <= D_MIN) then
-         begin
-            mix[channel].eMode := 128 or Ord(SOUND_DECREASE_LINEAR); // E_IDLE
-            mix[channel].eDec  := 0;
-         end
-         else
-            mix[channel].eMode := Ord(SOUND_DECREASE_LINEAR);
-      end;
-      $20: // Decrease Exponential
-      begin
-         mix[channel].eRIdx := APU.DSP[chs[channel].o + APU_GAIN] and $1F;
-         mix[channel].eRate := rateTab[mix[channel].eRIdx];
-         mix[channel].eAdj  := 0; // A_EXP
-         mix[channel].eDest := D_MIN;
-         if (mix[channel].eRate = 0) or (mix[channel].eVal <= D_MIN) then
-         begin
-            mix[channel].eMode := 128 or Ord(SOUND_DECREASE_EXPONENTIAL); // E_IDLE
-            mix[channel].eDec  := 0;
-         end
-         else
-            mix[channel].eMode := Ord(SOUND_DECREASE_EXPONENTIAL);
-      end;
-      $40: // Increase Linear
-      begin
-         mix[channel].eRIdx := APU.DSP[chs[channel].o + APU_GAIN] and $1F;
-         mix[channel].eRate := rateTab[mix[channel].eRIdx];
-         mix[channel].eAdj  := A_LIN;
-         mix[channel].eDest := D_ATTACK;
-         if (mix[channel].eRate = 0) or (mix[channel].eVal >= D_ATTACK) then
-         begin
-            mix[channel].eMode := 128 or Ord(SOUND_INCREASE_LINEAR); // E_IDLE
-            mix[channel].eDec  := 0;
-         end
-         else
-            mix[channel].eMode := Ord(SOUND_INCREASE_LINEAR);
-      end;
-      $60: // Increase Bent Line
-      begin
-         mix[channel].eRIdx := APU.DSP[chs[channel].o + APU_GAIN] and $1F;
-         mix[channel].eRate := rateTab[mix[channel].eRIdx];
-         if mix[channel].eVal < D_BENT then
-         begin
-            mix[channel].eAdj  := A_LIN;
-            mix[channel].eDest := D_BENT;
-         end
-         else
-         begin
-            mix[channel].eAdj  := A_LIN div 4; // A_BENT
-            mix[channel].eDest := D_ATTACK;
-         end;
-
-         if (mix[channel].eRate = 0) or (mix[channel].eVal >= D_ATTACK) then
-         begin
-            mix[channel].eMode := 128 or Ord(SOUND_INCREASE_BENT_LINE); // E_IDLE
-            mix[channel].eDec  := 0;
-         end
-         else
-            mix[channel].eMode := Ord(SOUND_INCREASE_BENT_LINE);
-      end;
-   end;
-end;
-
-procedure StartEnv(channel: Integer); inline;
-begin
-   if ((mix[channel].mFlg and (MFLG_OFF or MFLG_END)) <> 0) or ((mix[channel].eMode and 128) <> 0) then
-      mix[channel].eDec := 0;
-
-   if (APU.DSP[chs[channel].o + APU_ADSR1] and $80) <> 0 then
-      ChgAtt(channel)
+   if val < min then
+      Result := min
+   else if val > max then
+      Result := max
    else
-      ChgGain(channel);
+      Result := val;
 end;
 
-procedure ChgSus(channel: Integer);
-const
-   A_EXP = 0;
-   D_MIN = 0;
+// ******************************************************************************
+// Seção 2: Procedimentos Auxiliares e Handlers de Registradores
+// ******************************************************************************
+
+{
+  DSPGetPitch
+  ------------------------------------------------------------------------------
+  Lê os registradores de pitch baixo (P_L) e alto (P_H) para um canal e os
+  combina para formar o valor de pitch de 14 bits.
+}
+function DSPGetPitch(channel: Integer): Cardinal;
+var
+   addr_l, addr_h: Byte;
+   pitch_l, pitch_h: Byte;
 begin
-   mix[channel].eRIdx := APU.DSP[chs[channel].o + APU_ADSR2] and $1F;
-   mix[channel].eRate := rateTab[mix[channel].eRIdx];
-   if (mix[channel].eRate = 0) or (mix[channel].eVal <= D_MIN) then
-   begin
-      mix[channel].eMode := 128 or Ord(SOUND_SUSTAIN); // E_IDLE | E_SUST
-      mix[channel].eDec := 0;
-   end
-   else
-      mix[channel].eMode := Ord(SOUND_SUSTAIN); // E_SUST
-   mix[channel].eAdj := A_EXP;
-   mix[channel].eDest := D_MIN;
+   // Calcula o endereço dos registradores de pitch para o canal especificado
+   addr_l := (channel * $10) + APU_P_L;
+   addr_h := (channel * $10) + APU_P_H;
+
+   // Lê os valores dos registradores do array DSP
+   pitch_l := APU.DSP[addr_l];
+   pitch_h := APU.DSP[addr_h];
+
+   // Combina o byte baixo e os 6 bits relevantes do byte alto ($3F)
+   Result := pitch_l or ((pitch_h and $3F) shl 8);
 end;
 
-procedure ChgDec(channel: Integer);
-const
-   D_EXP = ((128 * (1 shl E_SHIFT)) div 8);
+{
+  DSPGetSrc
+  ------------------------------------------------------------------------------
+  Encontra o endereço de início de uma amostra de som (source) na RAM da APU.
+}
+function DSPGetSrc(channel: Integer): Cardinal;
+var
+   dir_addr: Word;
+   srcn_addr: Byte;
+   entry_addr: Word;
 begin
-   var sl := (APU.DSP[chs[channel].o + APU_ADSR2] shr 5);
-   var eDest := (sl + 1) * D_EXP;
+   // O registrador DIR ($5D) aponta para a página (high byte) do diretório de amostras
+   dir_addr := mDIR shl 8;
 
-   if (sl = 7) or (mix[channel].eVal <= eDest) then
+   // O registrador SRCN ($x4) para o canal é o índice no diretório.
+   // Cada entrada no diretório tem 4 bytes.
+   srcn_addr := mix[channel].mSRCN;
+   entry_addr := dir_addr + (srcn_addr * 4);
+
+   // Lê 2 bytes (LSB, MSB) para obter o endereço de início da amostra
+   Result := IAPU.RAM[entry_addr] or (IAPU.RAM[entry_addr + 1] shl 8);
+end;
+
+{
+  SetNoiseHertz
+  ------------------------------------------------------------------------------
+  Configura a frequência do canal de ruído com base no valor do registrador FLG.
+}
+procedure SetNoiseHertz;
+const
+   // Tabela de frequências para cada valor do índice de ruído (0-31)
+   hertz: array [0 .. 31] of Integer = (4000, 3846, 3703, 3571, 3448, 3333, 3225, 3125, 3030, 2941, 2857, 2777, 2702, 2631, 2564, 2500,
+                                        2439, 2380, 2325, 2272, 2222, 2173, 2127, 2083, 2040, 2000, 1960, 1923, 1886, 1851, 1818, 1785);
+var
+   noise_rate: Integer;
+begin
+   if (APU.DSP[APU_FLG] and NOISE_ENABLE) <> 0 then
    begin
-      ChgSus(channel);
-      Exit;
+      noise_rate := APU.DSP[APU_FLG] and $1F;
+      // TODO: Conectar a variável de estado de ruído à sua estrutura de mixagem.
+      // Ex: mix[0].nRate := hertz[noise_rate];
    end;
-   mix[channel].eRIdx := ((APU.DSP[chs[channel].o + APU_ADSR1] and $70) shr 3) + 16;
-   mix[channel].eRate := rateTab[mix[channel].eRIdx];
-   mix[channel].eAdj := 0; // A_EXP
-   mix[channel].eDest := eDest;
-   mix[channel].eMode := Ord(SOUND_DECAY); // E_DECAY
 end;
 
-procedure ChgAtt(channel: Integer);
-const
-   A_GAIN = 1 shl E_SHIFT;
-   A_LIN  = (128 * A_GAIN) div 64;
-   A_NOATT = (64 * A_GAIN);
-   D_ATTACK = (128 * A_GAIN) - 1;
-begin
-   if mix[channel].eVal >= D_ATTACK then
-   begin
-      ChgDec(channel);
-      Exit;
-   end;
-   var ar := APU.DSP[chs[channel].o + APU_ADSR1] and $0F;
-   mix[channel].eRIdx := (ar shl 1) + 1;
-   mix[channel].eRate := rateTab[mix[channel].eRIdx];
-   mix[channel].eAdj := iif(ar = $0F, A_NOATT, A_LIN);
-   mix[channel].eDest := D_ATTACK;
-   mix[channel].eMode := Ord(SOUND_ATTACK); // E_ATT
-end;
-
-// --- Implementação dos Handlers de Registradores ---
-
-procedure RVolL(channel: Integer; val: Byte);
-begin
-   mix[channel].mChnL := SmallInt(val);
-end;
-
-procedure RVolR(channel: Integer; val: Byte);
-begin
-   mix[channel].mChnR := SmallInt(val);
-end;
-
+{
+  RPitch
+  ------------------------------------------------------------------------------
+  Handler auxiliar chamado quando o pitch de um canal é alterado.
+  Calcula a taxa de passo (mOrgRate) em formato de ponto fixo.
+}
 procedure RPitch(channel: Integer; val: Byte);
 var
    r: Int64;
@@ -376,67 +153,111 @@ begin
    mix[channel].mOrgRate := (r shr FIXED_POINT_SHIFT) + Ord((r and FIXED_POINT_REMAINDER) <> 0);
 end;
 
+// --- Implementações dos Handlers de Registradores ---
+
+procedure ChgADSR(channel: Integer); forward;
+procedure ChgGain(channel: Integer); forward;
+procedure StartEnv(channel: Integer); forward;
+
+procedure RVolL(channel: Integer; val: Byte);
+begin
+   mix[channel].mVolL := val;
+end;
+
+procedure RVolR(channel: Integer; val: Byte);
+begin
+   mix[channel].mVolR := val;
+end;
+
+procedure RPitchL(channel: Integer; val: Byte);
+begin
+   mix[channel].mPitchL := val;
+   RPitch(channel, val);
+end;
+
+procedure RPitchH(channel: Integer; val: Byte);
+begin
+   mix[channel].mPitchH := val;
+   RPitch(channel, val);
+end;
+
+procedure RSRCN(channel: Integer; val: Byte);
+begin
+   mix[channel].mSRCN := val;
+   if DSPGetSrc(channel) <> mix[channel].bStart then
+      mix[channel].mFlg := mix[channel].mFlg or MFLG_SSRC;
+end;
+
 procedure RADSR1(channel: Integer; val: Byte);
 begin
-   if (mix[channel].mFlg and MFLG_KOFF) <> 0 then
-      Exit;
-   if (APU.DSP[chs[channel].o + APU_ADSR1] and $80) <> 0 then
-      ChgADSR(channel)
-   else
-      ChgGain(channel);
+   mix[channel].mADSR1 := val;
+   if mix[channel].eMode in [SOUND_ATTACK, SOUND_DECAY, SOUND_SUSTAIN] then
+      ChgADSR(channel);
 end;
 
 procedure RADSR2(channel: Integer; val: Byte);
 begin
-   if ((mix[channel].mFlg and MFLG_KOFF) <> 0) or ((APU.DSP[chs[channel].o + APU_ADSR1] and $80) = 0) then
-      Exit;
-   ChgADSR(channel);
+   mix[channel].mADSR2 := val;
+   if mix[channel].eMode in [SOUND_DECAY, SOUND_SUSTAIN] then
+      ChgADSR(channel);
 end;
 
 procedure RGain(channel: Integer; val: Byte);
 begin
-   if ((mix[channel].mFlg and MFLG_KOFF) <> 0) or ((APU.DSP[chs[channel].o + APU_ADSR1] and $80) <> 0) then
-      Exit;
-   ChgGain(channel);
+   mix[channel].mGAIN := val;
+   if mix[channel].eMode >= SOUND_GAIN then
+      ChgGain(channel);
 end;
 
 procedure RMVolL(channel: Integer; val: Byte);
 begin
-   volMainL := (SmallInt(val) * volAdj) shr FIXED_POINT_SHIFT;
+   mMVolL := val;
 end;
 
 procedure RMVolR(channel: Integer; val: Byte);
 begin
-   volMainR := (SmallInt(val) * volAdj) shr FIXED_POINT_SHIFT;
+   mMVolR := val;
 end;
 
 procedure REVolL(channel: Integer; val: Byte);
 begin
-   volEchoL := (SmallInt(val) * volAdj) shr FIXED_POINT_SHIFT;
+   mEVolL := val;
 end;
 
 procedure REVolR(channel: Integer; val: Byte);
 begin
-   volEchoR := (SmallInt(val) * volAdj) shr FIXED_POINT_SHIFT;
+   mEVolR := val;
 end;
 
 procedure REFB(channel: Integer; val: Byte);
 begin
-   echoFB := SmallInt(val);
+   mEFB := val;
 end;
 
-procedure REDl(channel: Integer; val: Byte);
+procedure RDir(channel: Integer; val: Byte);
 begin
-   val := val and $0F;
-   if val = 0 then
-      echoDel := 2
-   else
-      echoDel := (Cardinal(val shl 4) * dspRate div 1000) shl 1;
+   mDIR := val;
 end;
 
-procedure RFCI(channel: Integer; val: Byte);
+procedure RESA(channel: Integer; val: Byte);
 begin
-   FilterTaps[channel] := ShortInt(val);
+   mESA := val;
+end;
+
+procedure REDL(channel: Integer; val: Byte);
+begin
+   mEDL := val and $0F;
+end;
+
+procedure RCOEF(channel: Integer; val: Byte);
+begin
+end; // Handler para coeficientes de eco
+
+procedure RFlg(channel: Integer; val: Byte);
+begin
+   disEcho := (disEcho and not ECHO_ENABLE) or (val and ECHO_ENABLE);
+   APU.DSP[APU_FLG] := val;
+   SetNoiseHertz;
 end;
 
 procedure RKOn(channel: Integer; val: Byte);
@@ -445,111 +266,529 @@ var
 begin
    if val <> 0 then
    begin
+      voiceKon := voiceKon or val;
       for i := 0 to 7 do
       begin
-         if (val and chs[i].m) <> 0 then
+         if (val and (1 shl i)) <> 0 then
          begin
-            dspRegs[chs[i].o + APU_VOL_LEFT](i, APU.DSP[chs[i].o + APU_VOL_LEFT]);
-            dspRegs[chs[i].o + APU_VOL_RIGHT](i, APU.DSP[chs[i].o + APU_VOL_RIGHT]);
-            RPitch(i, APU.DSP[chs[i].o + APU_P_LOW]);
+            mix[i].mFlg := mix[i].mFlg and not(MFLG_KOFF or MFLG_OFF);
             StartEnv(i);
-            mix[i].bStart := DSPGetSrc(i);
-            mix[i].mFlg := mix[i].mFlg or MFLG_SSRC;
-            mix[i].mFlg := mix[i].mFlg and not (MFLG_KOFF or MFLG_OFF);
-            voiceKon := voiceKon or chs[i].m;
          end;
       end;
    end;
 end;
 
-procedure RKOf(channel: Integer; val: Byte);
-const
-   A_KOF = ((128 * (1 shl E_SHIFT)) div 256);
+procedure RKOff(channel: Integer; val: Byte);
 var
    i: Integer;
 begin
-   val := val and voiceKon;
-   if val = 0 then Exit;
-
    for i := 0 to 7 do
    begin
-      if (val and chs[i].m) <> 0 then
+      if (val and (1 shl i)) <> 0 then
       begin
-         mix[i].eRIdx := $1F;
-         mix[i].eRate := rateTab[mix[i].eRIdx];
-         mix[i].eAdj := A_KOF;
-         mix[i].eDest := 0; // D_MIN
-         mix[i].eMode := Ord(SOUND_RELEASE); // E_REL
          mix[i].mFlg := mix[i].mFlg or MFLG_KOFF;
-         voiceKon := voiceKon and not chs[i].m;
       end;
    end;
 end;
 
-procedure RFlg(channel: Integer; val: Byte);
-begin
-   disEcho := (disEcho and not APU_ECHO_DISABLED) or (val and APU_ECHO_DISABLED);
-   APU.DSP[APU_FLG] := val;
-   SetNoiseHertz;
-end;
+// --- Procedimento de Inicialização Principal ---
 
-procedure RESA(channel: Integer; val: Byte);
-begin
-   echoStart := (Cardinal(val) * 64 * dspRate div SNES_SAMPLE_RATE) shl 1;
-end;
-
-procedure REndX(channel: Integer; val: Byte);
-begin
-   APU.DSP[APU_ENDX] := 0;
-end;
-
-procedure RNull(channel: Integer; val: Byte);
-begin
-  // Null register, does nothing.
-end;
-
-// --- Função Principal de Despacho e Inicialização ---
-
-procedure APUDSPIn(address, data: Byte);
+procedure InitDSP;
 var
-   channel: Integer;
+   i: Integer;
 begin
-   if (address and $80) <> 0 then
-      Exit; // Writes to 80-FFh have no effect
+   // Zera todos os ponteiros da tabela de dispatch
+   FillChar(dspRegs, SizeOf(dspRegs), 0);
 
-   channel := (address and $70) shr 4;
+   // Associa cada endereço de registrador ao seu procedimento handler
+   for i := 0 to 7 do
+   begin
+      dspRegs[i * $10 + APU_VOL_L] := @RVolL;
+      dspRegs[i * $10 + APU_VOL_R] := @RVolR;
+      dspRegs[i * $10 + APU_P_L] := @RPitchL;
+      dspRegs[i * $10 + APU_P_H] := @RPitchH;
+      dspRegs[i * $10 + APU_SRCN] := @RSRCN;
+      dspRegs[i * $10 + APU_ADSR1] := @RADSR1;
+      dspRegs[i * $10 + APU_ADSR2] := @RADSR2;
+      dspRegs[i * $10 + APU_GAIN] := @RGain;
+   end;
 
-   // Atualiza o valor no array de registradores do DSP
-   APU.DSP[address] := data;
+   dspRegs[APU_MVOL_L] := @RMVolL;
+   dspRegs[APU_MVOL_R] := @RMVolR;
+   dspRegs[APU_EVOL_L] := @REVolL;
+   dspRegs[APU_EVOL_R] := @REVolR;
+   dspRegs[APU_KON] := @RKOn;
+   dspRegs[APU_KOF] := @RKOff;
+   dspRegs[APU_FLG] := @RFlg;
+   dspRegs[APU_EFB] := @REFB;
+   dspRegs[APU_DIR] := @RDir;
+   dspRegs[APU_ESA] := @RESA;
+   dspRegs[APU_EDL] := @REDL;
 
-   // Se o canal estiver desligado, não chama o handler (exceto para alguns registradores)
-   if ((mix[channel].mFlg and MFLG_OFF) <> 0) and (address <> (chs[channel].o + APU_KON)) then
-      Exit;
+   for i := 0 to 7 do
+      dspRegs[$0F + i * $10] := @RCOEF;
 
-   // Chama o handler correto da tabela
-   if Assigned(dspRegs[address]) then
-      dspRegs[address](channel, data);
+   // Preenche as tabelas de lookup com base na 'rateTab'
+   for i := 0 to 31 do
+      sustainTab[i] := rateTab[i];
+   for i := 0 to 15 do
+      attackTab[i] := rateTab[i * 2 + 1];
+
+   // Reseta o estado do DSP para os valores padrão
+   ResetDSP;
 end;
 
-procedure InitializeDSPHandlers;
+// *****************************************************
+// --- Lógica de Processamento de Envelope e Amostra ---
+// *****************************************************
+
+{
+  ChgADSR
+  ------------------------------------------------------------------------------
+  Configura o estado do envelope para um dos modos ADSR (Attack, Decay, Sustain, Release)
+  com base nos valores dos registradores mADSR1 e mADSR2 do canal.
+}
+procedure ChgADSR(channel: Integer);
+var
+   ar, dr, sl, sr: Byte;
+   distance: Integer;
 begin
-   // Associa os procedimentos aos seus endereços de registrador na tabela
-   dspRegs[$00] := @RVolL;  dspRegs[$01] := @RVolR;  dspRegs[$02] := @RPitch; dspRegs[$03] := @RPitch; dspRegs[$04] := @RNull;  dspRegs[$05] := @RADSR1; dspRegs[$06] := @RADSR2; dspRegs[$07] := @RGain;
-   dspRegs[$08] := @RNull;  dspRegs[$09] := @RNull;  dspRegs[$0A] := @RNull;  dspRegs[$0B] := @RNull;  dspRegs[$0C] := @RMVolL; dspRegs[$0D] := @REFB;   dspRegs[$0E] := @RNull;  dspRegs[$0F] := @RFCI;
-   dspRegs[$10] := @RVolL;  dspRegs[$11] := @RVolR;  dspRegs[$12] := @RPitch; dspRegs[$13] := @RPitch; dspRegs[$14] := @RNull;  dspRegs[$15] := @RADSR1; dspRegs[$16] := @RADSR2; dspRegs[$17] := @RGain;
-   dspRegs[$18] := @RNull;  dspRegs[$19] := @RNull;  dspRegs[$1A] := @RNull;  dspRegs[$1B] := @RNull;  dspRegs[$1C] := @RMVolR; dspRegs[$1D] := @RNull;  dspRegs[$1E] := @RNull;  dspRegs[$1F] := @RFCI;
-   dspRegs[$20] := @RVolL;  dspRegs[$21] := @RVolR;  dspRegs[$22] := @RPitch; dspRegs[$23] := @RPitch; dspRegs[$24] := @RNull;  dspRegs[$25] := @RADSR1; dspRegs[$26] := @RADSR2; dspRegs[$27] := @RGain;
-   dspRegs[$28] := @RNull;  dspRegs[$29] := @RNull;  dspRegs[$2A] := @RNull;  dspRegs[$2B] := @RNull;  dspRegs[$2C] := @REVolL; dspRegs[$2D] := @RNull;  dspRegs[$2E] := @RNull;  dspRegs[$2F] := @RFCI;
-   dspRegs[$30] := @RVolL;  dspRegs[$31] := @RVolR;  dspRegs[$32] := @RPitch; dspRegs[$33] := @RPitch; dspRegs[$34] := @RNull;  dspRegs[$35] := @RADSR1; dspRegs[$36] := @RADSR2; dspRegs[$37] := @RGain;
-   dspRegs[$38] := @RNull;  dspRegs[$39] := @RNull;  dspRegs[$3A] := @RNull;  dspRegs[$3B] := @RNull;  dspRegs[$3C] := @REVolR; dspRegs[$3D] := @RNull;  dspRegs[$3E] := @RNull;  dspRegs[$3F] := @RFCI;
-   dspRegs[$40] := @RVolL;  dspRegs[$41] := @RVolR;  dspRegs[$42] := @RPitch; dspRegs[$43] := @RPitch; dspRegs[$44] := @RNull;  dspRegs[$45] := @RADSR1; dspRegs[$46] := @RADSR2; dspRegs[$47] := @RGain;
-   dspRegs[$48] := @RNull;  dspRegs[$49] := @RNull;  dspRegs[$4A] := @RNull;  dspRegs[$4B] := @RNull;  dspRegs[$4C] := @RKOn;   dspRegs[$4D] := @RNull;  dspRegs[$4E] := @RNull;  dspRegs[$4F] := @RFCI;
-   dspRegs[$50] := @RVolL;  dspRegs[$51] := @RVolR;  dspRegs[$52] := @RPitch; dspRegs[$53] := @RPitch; dspRegs[$54] := @RNull;  dspRegs[$55] := @RADSR1; dspRegs[$56] := @RADSR2; dspRegs[$57] := @RGain;
-   dspRegs[$58] := @RNull;  dspRegs[$59] := @RNull;  dspRegs[$5A] := @RNull;  dspRegs[$5B] := @RNull;  dspRegs[$5C] := @RKOf;   dspRegs[$5D] := @RNull;  dspRegs[$5E] := @RNull;  dspRegs[$5F] := @RFCI;
-   dspRegs[$60] := @RVolL;  dspRegs[$61] := @RVolR;  dspRegs[$62] := @RPitch; dspRegs[$63] := @RPitch; dspRegs[$64] := @RNull;  dspRegs[$65] := @RADSR1; dspRegs[$66] := @RADSR2; dspRegs[$67] := @RGain;
-   dspRegs[$68] := @RNull;  dspRegs[$69] := @RNull;  dspRegs[$6A] := @RNull;  dspRegs[$6B] := @RNull;  dspRegs[$6C] := @RFlg;   dspRegs[$6D] := @RESA;   dspRegs[$6E] := @RNull;  dspRegs[$6F] := @RFCI;
-   dspRegs[$70] := @RVolL;  dspRegs[$71] := @RVolR;  dspRegs[$72] := @RPitch; dspRegs[$73] := @RPitch; dspRegs[$74] := @RNull;  dspRegs[$75] := @RADSR1; dspRegs[$76] := @RADSR2; dspRegs[$77] := @RGain;
-   dspRegs[$78] := @RNull;  dspRegs[$79] := @RNull;  dspRegs[$7A] := @RNull;  dspRegs[$7B] := @RNull;  dspRegs[$7C] := @REndX;  dspRegs[$7D] := @REDl;   dspRegs[$7E] := @RNull;  dspRegs[$7F] := @RFCI;
+   ar := mix[channel].mADSR1 and $0F;
+   dr := (mix[channel].mADSR1 and $70) shr 4;
+   sl := (mix[channel].mADSR2 and $E0) shr 5;
+   sr := mix[channel].mADSR2 and $1F;
+
+   // Desmarca o modo IDLE, pois o envelope está ativo
+   mix[channel].eMode := mix[channel].eMode and $7F;
+
+   case (mix[channel].eMode and $7F) of
+      SOUND_ATTACK:
+      begin
+         if ar = $0F then
+         begin
+            mix[channel].eVal := D_ATTACK;
+            mix[channel].eMode := SOUND_DECAY;
+            // Chama recursivamente para configurar o Decay imediatamente
+            ChgADSR(channel);
+         Exit;
+         end
+         else
+         begin
+            mix[channel].eAdj := A_LIN;
+            mix[channel].eRate := attackTab[ar];
+            mix[channel].eDest := D_ATTACK;
+
+            // --- LÓGICA CORRIGIDA E SEGURA ---
+            if mix[channel].eRate > 0 then
+            begin
+               distance := D_ATTACK - mix[channel].eVal;
+               if distance > 0 then
+                  // Calcula quantos ciclos de DSP são necessários para o ataque
+                  mix[channel].eDec := (distance * dspRate) div mix[channel].eRate
+               else
+                  mix[channel].eDec := 0; // Já atingiu ou passou, sem duração
+            end
+            else
+               mix[channel].eDec := 0; // Taxa zero, sem duração
+         end;
+      end;
+      SOUND_DECAY:
+         begin
+            mix[channel].eAdj := 0; // Exponencial
+            mix[channel].eRate := rateTab[dr + 16];
+            mix[channel].eDest := (sl + 1) * (D_ATTACK + 1) div 8 - 1;
+            mix[channel].eDec := Cardinal(-1); // Continua até atingir o destino
+         end;
+      SOUND_SUSTAIN:
+         begin
+            mix[channel].eAdj := 0; // Exponencial
+            mix[channel].eRate := sustainTab[sr];
+            mix[channel].eDest := D_MIN;
+            mix[channel].eDec := Cardinal(-1); // Continua indefinidamente
+         end;
+      SOUND_RELEASE:
+         begin
+            mix[channel].eAdj := 0; // Exponencial
+            mix[channel].eRate := rateTab[0]; // Taxa de release mais rápida
+            mix[channel].eDest := D_MIN;
+            mix[channel].eDec := Cardinal(-1); // Continua até atingir o destino (silêncio)
+         end;
+   end;
+end;
+
+{
+  ChgGain
+  ------------------------------------------------------------------------------
+  Configura o estado do envelope para um dos modos GAIN, que são envelopes
+  especiais não-ADSR.
+}
+procedure ChgGain(channel: Integer);
+begin
+   // Desmarca o modo IDLE
+   mix[channel].eMode := mix[channel].eMode and $7F;
+
+   // Verifica o bit 7 do registrador GAIN
+   if (mix[channel].mGAIN and $80) <> 0 then // Modo: Direct GAIN
+   begin
+      mix[channel].eMode := SOUND_GAIN;
+      mix[channel].eVal := (mix[channel].mGAIN and $7F) * A_GAIN;
+      mix[channel].eDest := mix[channel].eVal;
+      mix[channel].eMode := mix[channel].eMode or $80; // Fica IDLE imediatamente
+      mix[channel].eDec := 0;
+      Exit;
+   end;
+
+   // Modo: GAIN com envelope (Increase/Decrease)
+   case mix[channel].mGAIN and $60 of
+   $00: mix[channel].eMode := SOUND_DECREASE_LINEAR;
+   $20: mix[channel].eMode := SOUND_DECREASE_EXPONENTIAL;
+   $40: mix[channel].eMode := SOUND_INCREASE_LINEAR;
+   $60: mix[channel].eMode := SOUND_INCREASE_BENT_LINE;
+   end;
+
+   mix[channel].eRIdx := mix[channel].mGAIN and $1F;
+   mix[channel].eRate := rateTab[mix[channel].eRIdx];
+   mix[channel].eDec := Cardinal(-1); // Continua até atingir o destino
+
+   // Configura o destino e o ajuste com base no modo
+   case mix[channel].eMode of
+   SOUND_DECREASE_LINEAR, SOUND_DECREASE_EXPONENTIAL: mix[channel].eDest := D_MIN;
+   SOUND_INCREASE_LINEAR, SOUND_INCREASE_BENT_LINE: mix[channel].eDest := D_ATTACK;
+   end;
+
+   if mix[channel].eMode = SOUND_INCREASE_BENT_LINE then
+   begin
+      if mix[channel].eVal < D_BENT then
+         mix[channel].eAdj := A_LIN
+      else
+         mix[channel].eAdj := A_LIN div 4;
+   end
+   else
+      if mix[channel].eMode = SOUND_INCREASE_LINEAR then
+         mix[channel].eAdj := A_LIN
+      else
+         mix[channel].eAdj := 0; // Exponencial para os modos de Decrease
+end;
+
+{
+  StartEnv
+  ------------------------------------------------------------------------------
+  Inicia o envelope de um canal, geralmente chamado por RKOn (Key On).
+}
+procedure StartEnv(channel: Integer);
+begin
+   // Se o canal estava em Release, reseta o valor do envelope para começar do zero.
+   if mix[channel].eMode = SOUND_RELEASE then
+      mix[channel].eVal := 0;
+
+   // Só inicia o ataque se o envelope não estiver no máximo.
+   if mix[channel].eVal < D_ATTACK then
+   begin
+      mix[channel].eMode := SOUND_ATTACK;
+      mix[channel].eDec := 0;
+      mix[channel].eDest := D_ATTACK;
+      ChgADSR(channel);
+   end;
+end;
+
+{
+  DSPProcess
+  ------------------------------------------------------------------------------
+  O motor do DSP. Simula a passagem de 'cycles' de tempo, atualizando o estado
+  de cada um dos 8 canais de áudio.
+}
+procedure DSPProcess(cycles: Cardinal);
+var
+   i: Integer;
+begin
+   for i := 0 to 7 do
+   begin
+      // 1. Processa o envelope (ADSR/GAIN) se não estiver no modo IDLE
+      if (mix[i].eMode and $80) = 0 then
+      begin
+         // Aplica a mudança de envelope baseada na taxa e no tempo (cycles)
+         // (A lógica exata de cálculo de 'eDec' e atualização de 'eVal' é complexa,
+         // esta é uma implementação funcional representativa)
+         case (mix[i].eMode and $7F) of
+         SOUND_ATTACK, SOUND_INCREASE_LINEAR, SOUND_INCREASE_BENT_LINE:
+            begin
+               Inc(mix[i].eVal, mix[i].eRate * cycles);
+               if mix[i].eVal >= mix[i].eDest then
+               begin
+                  mix[i].eVal := mix[i].eDest;
+                  mix[i].eMode := mix[i].eMode or $80; // IDLE
+               end;
+            end;
+         SOUND_DECAY, SOUND_SUSTAIN, SOUND_DECREASE_EXPONENTIAL, SOUND_DECREASE_LINEAR:
+            begin
+               Dec(mix[i].eVal, mix[i].eRate * cycles);
+               if mix[i].eVal <= mix[i].eDest then
+               begin
+                  mix[i].eVal := mix[i].eDest;
+                  if mix[i].eMode <> SOUND_SUSTAIN then // Sustain nunca fica IDLE
+                     mix[i].eMode := mix[i].eMode or $80; // IDLE
+               end;
+            end;
+         end;
+      end;
+
+      // 2. Processa a flag de Key Off
+      if (mix[i].mFlg and MFLG_KOFF) <> 0 then
+      begin
+         mix[i].eMode := SOUND_RELEASE;
+         ChgADSR(i);
+         mix[i].mFlg := mix[i].mFlg and not MFLG_KOFF;
+      end;
+
+      // 3. Processa a flag de reinício de amostra
+      if (mix[i].mFlg and MFLG_SSRC) <> 0 then
+      begin
+         mix[i].bPos := 0;
+         mix[i].bLoop := False;
+         mix[i].bCurrAddr := DSPGetSrc(i);
+         // DecodeBRRBlock(i, mix[i].bCurrAddr); // Será implementado na Parte 4
+         mix[i].mFlg := mix[i].mFlg and not MFLG_SSRC;
+      end;
+
+      // 4. Avança a posição da amostra se o canal estiver ativo
+      if (mix[i].mFlg and MFLG_OFF) = 0 then
+      begin
+         // TODO: Implementar Pitch Modulation (PMON) aqui, se desejado.
+         mix[i].mRate := mix[i].mOrgRate;
+
+         Inc(mix[i].bPos, mix[i].mRate * cycles);
+
+         // Verifica se o buffer de 16 amostras decodificadas terminou
+         if (mix[i].bPos shr 16) >= 16 then
+         begin
+            // A lógica de decodificação do próximo bloco BRR será na Parte 4
+            // DecodeBRRBlock(...);
+            mix[i].bPos := mix[i].bPos and $FFFF; // Mantém a parte fracionária
+         end;
+      end;
+   end;
+end;
+
+// ******************************************************************************
+// Seção 4: Decodificação BRR, Mixagem Final e Reset
+// ******************************************************************************
+
+{
+  DecodeBRRBlock
+  ------------------------------------------------------------------------------
+  Decodifica um único bloco de 9 bytes do formato de áudio comprimido BRR
+  (Bit Rate Reduction) em 16 amostras PCM de 16 bits.
+}
+procedure DecodeBRRBlock(channel: Integer; block_addr: Cardinal);
+var
+   header: Byte;
+   i: Integer;
+   p1, p2, outv, s1, s2: Integer;
+   shift, filter: Integer;
+   sample1, sample2: Integer;
+begin
+   // Lê o byte de cabeçalho do bloco BRR
+   header := IAPU.RAM[block_addr];
+   mix[channel].bCurrAddr := block_addr;
+
+   // Bits 0 e 1 do cabeçalho são flags de fim e loop
+   mix[channel].bLoop := (header and 2) <> 0;
+   mix[channel].mFlg := mix[channel].mFlg and not MFLG_END;
+   if (header and 1) <> 0 then
+   begin
+      mix[channel].mFlg := mix[channel].mFlg or MFLG_END;
+      if mix[channel].bLoop then
+         mix[channel].bLoopAddr := DSPGetSrc(channel) + 2; // Endereço de loop de 2 bytes após o início
+   end;
+
+   shift := (header shr 4) and $F;
+   filter := (header shr 2) and $3;
+
+   // s1 e s2 são as duas amostras anteriores, cruciais para o filtro de previsão
+   s1 := mix[channel].bPrev1;
+   s2 := mix[channel].bPrev2;
+
+   // Itera sobre os 8 bytes de dados do bloco
+   for i := 0 to 7 do
+   begin
+      p1 := IAPU.RAM[block_addr + 1 + i];
+
+      // --- Decodifica a primeira amostra (nibble alto) ---
+      sample1 := (p1 and $F0) shr 4;
+      if (sample1 and 8) <> 0 then
+         sample1 := sample1 - 16; // Converte para 4-bit com sinal
+
+      // Aplica o shift (escala)
+      if shift <= 12 then
+         outv := (sample1 shl shift) shr 1
+      else // Valores de shift > 12 resultam em 0 ou -1, dependendo do sinal
+         outv := (sample1 shr (16 - shift)) - (sample1 shr (15 - shift));
+
+      // Aplica o filtro de previsão (recupera a forma de onda)
+      case filter of
+      1: outv := outv + s1 + ((-s1) shr 4);
+      2: outv := outv + (s1 shl 1) + ((-s1 * 3) shr 5) - s2 + (s2 shr 4);
+      3: outv := outv + (s1 shl 1) + ((-s1 * 13) shr 6) - s2 + ((s2 * 3) shr 4);
+      end;
+
+      outv := Clamp(outv, -32768, 32767);
+      mix[channel].bBuf[i * 2] := outv; // Armazena a amostra decodificada
+      s2 := s1;
+      s1 := outv; // Atualiza as amostras anteriores
+
+      // --- Decodifica a segunda amostra (nibble baixo) ---
+      sample2 := (p1 and $0F);
+      if (sample2 and 8) <> 0 then
+         sample2 := sample2 - 16;
+
+      if shift <= 12 then
+         outv := (sample2 shl shift) shr 1
+      else
+         outv := (sample2 shr (16 - shift)) - (sample2 shr (15 - shift));
+
+      case filter of
+      1: outv := outv + s1 + ((-s1) shr 4);
+      2: outv := outv + (s1 shl 1) + ((-s1 * 3) shr 5) - s2 + (s2 shr 4);
+      3: outv := outv + (s1 shl 1) + ((-s1 * 13) shr 6) - s2 + ((s2 * 3) shr 4);
+      end;
+
+      outv := Clamp(outv, -32768, 32767);
+      mix[channel].bBuf[i * 2 + 1] := outv;
+      s2 := s1;
+      s1 := outv;
+   end;
+
+   // Salva as duas últimas amostras para o próximo bloco
+   mix[channel].bPrev1 := s1;
+   mix[channel].bPrev2 := s2;
+end;
+
+{
+  InterpolateSample
+  ------------------------------------------------------------------------------
+  Usa interpolação Gaussiana para calcular a amostra exata na posição de
+  ponto fixo, resultando em um som mais suave e com pitch mais preciso.
+}
+function InterpolateSample(channel: Integer): SmallInt;
+var
+   pos: Cardinal;
+   s1, s2, s3, s4: Integer; // Usar Integer para evitar overflow nos cálculos intermediários
+   frac: Integer;
+begin
+   // Pega a posição inteira (índice 0-15) e a parte fracionária (12 bits)
+   pos := (mix[channel].bPos shr 12) and $F;
+   frac := mix[channel].bPos and $FFF;
+
+   // Busca as 4 amostras ao redor do ponto de interpolação
+   s1 := mix[channel].bBuf[(pos - 2) and $F];
+   s2 := mix[channel].bBuf[(pos - 1) and $F];
+   s3 := mix[channel].bBuf[pos];
+   s4 := mix[channel].bBuf[(pos + 1) and $F];
+
+   // Algoritmo de interpolação Gaussiana
+   Result := s3 + (frac * (((s4 - s2) div 2) + (frac * ((((s2 + s1) div 2) - s3) + (((s4 - s1) div 2) - ((s4 - s2) div 2)) * frac div 4096)) div 4096)) div 4096;
+end;
+
+{
+  DSPStereo
+  ------------------------------------------------------------------------------
+  Mixa a saída de todos os 8 canais, aplica volumes mestre e o efeito de eco,
+  e retorna um par de amostras estéreo.
+}
+procedure DSPStereo(var l, r: Integer);
+var
+   i: Integer;
+   env: Integer;
+   sample: SmallInt;
+   echo_l, echo_r: Integer;
+begin
+   l := 0;
+   r := 0;
+
+   for i := 0 to 7 do
+   begin
+      if (mix[i].mFlg and (MFLG_OFF or MFLG_MUTE)) = 0 then
+      begin
+         sample := InterpolateSample(i);
+         env := (mix[i].eVal shr E_SHIFT);
+         sample := (sample * env) shr 7;
+
+         l := l + (sample * mix[i].mVolL);
+         r := r + (sample * mix[i].mVolR);
+      end;
+   end;
+
+   l := (l * mMVolL) shr 7;
+   r := (r * mMVolR) shr 7;
+
+   // Processamento de Eco
+   if (disEcho and ECHO_ENABLE) = 0 then
+   begin
+      echo_l := echoBuffer[echoReadPtr];
+      echo_r := echoBuffer[echoReadPtr + 1];
+
+      l := l + ((echo_l * mEVolL) shr 7);
+      r := r + ((echo_r * mEVolR) shr 7);
+
+      echoBuffer[echoWritePtr] := Clamp(l + ((echo_l * mEFB) shr 7), -32768, 32767);
+      echoBuffer[echoWritePtr + 1] := Clamp(r + ((echo_r * mEFB) shr 7), -32768, 32767);
+   end;
+
+   Inc(echoReadPtr, 2);
+   Inc(echoWritePtr, 2);
+   if echoReadPtr >= echoLength then
+      echoReadPtr := 0;
+   if echoWritePtr >= echoLength then
+      echoWritePtr := 0;
+
+   l := Clamp(l, -32768, 32767);
+   r := Clamp(r, -32768, 32767);
+end;
+
+{
+  ResetDSP
+  ------------------------------------------------------------------------------
+  Reseta todas as variáveis de estado do DSP para seus valores iniciais.
+}
+procedure ResetDSP;
+var
+   i: Integer;
+begin
+   FillChar(mix, SizeOf(mix), 0);
+   mMVolL := 0;
+   mMVolR := 0;
+   mEVolL := 0;
+   mEVolR := 0;
+   mEFB := 0;
+   mDIR := 0;
+   mESA := 0;
+   mEDL := 0;
+   voiceKon := 0;
+   disEcho := 0;
+   FillChar(echoBuffer, SizeOf(echoBuffer), 0);
+   echoWritePtr := 0;
+   echoReadPtr := 0;
+   echoLength := 0;
+
+   for i := 0 to 7 do
+   begin
+      mix[i].mFlg := MFLG_OFF;
+   end;
+end;
+
+procedure APUDSPIn(address: Byte; data: Byte);
+var
+   reg: Byte;
+   voice: Integer;
+begin
+   reg := address and $7F;
+   APU.DSP[reg] := data;
+   if Assigned(dspRegs[reg]) then
+   begin
+      voice := reg and $0F;
+      if voice > 7 then voice := voice - 7;
+         dspRegs[reg](voice, data);
+   end;
 end;
 
 end.

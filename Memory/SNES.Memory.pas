@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.AnsiStrings,
   SNES.DataTypes, SNES.Globals;
 
 type
@@ -28,9 +28,10 @@ procedure SetPCBase(Address: Cardinal);
 implementation
 
 uses
-  System.Classes, System.Character,
-  SNES.PPU, SNES.CPU, SNES.GFX;
-//  SNES.Chips.DSP,
+   System.Classes, System.Character,
+   SNES.PPU, SNES.CPU, SNES.GFX,
+   SNES.APU;
+//   SNES.Chips.DSP,
 //  SNES.Chips.SA1,
 //  SNES.Chips.CX4,
 //  SNES.Chips.OBC1,
@@ -72,8 +73,8 @@ end;
 
 procedure AddNumCyclesInMemAccess(cycles: Integer);
 begin
-  // if not Settings.GetSetDMATimingHacks and (CPU.InDMA or IPPU.HDMA) then
-  //  Exit;
+   if not Settings.GetSetDMATimingHacks and (CPU.InDMA or IPPU.HDMA) then
+      Exit;
   CPU.Cycles := CPU.Cycles + cycles;
 end;
 
@@ -202,7 +203,76 @@ begin
       Result := Result - 1;
 end;
 
-// ... (Implementação de Deinterleave, etc. omitida para brevidade, mas deve ser portada)
+procedure DeinterleaveType1(size: Integer; base: PByte);
+var
+   i, j: Integer;
+   blocks: array[0..255] of Byte;
+   tmp: PByte;
+   nblocks: Integer;
+   b: Byte;
+begin
+   nblocks := size shr 15; // size / 32768
+   if nblocks = 0 then
+      Exit;
+
+   j := 0;
+   i := 0;
+   while i < nblocks do
+   begin
+      blocks[i] := j + nblocks;
+      blocks[i + 1] := j;
+      Inc(j);
+      Inc(i, 2); // Incrementa o contador 'i' por 2 a cada iteração
+   end;
+
+   GetMem(tmp, $8000);
+   try
+      for i := 0 to nblocks - 1 do
+      begin
+         for j := i to nblocks - 1 do
+         begin
+            if blocks[j] <> i then
+               Continue;
+
+            // Troca os blocos de memória para a ordem correta
+            Move((base + blocks[j] * $8000)^, tmp^, $8000);
+            Move((base + blocks[i] * $8000)^, (base + blocks[j] * $8000)^, $8000);
+            Move(tmp^, (base + i * $8000)^, $8000);
+
+            // Atualiza o array de controle da troca
+            b := blocks[j];
+            blocks[j] := blocks[i];
+            blocks[i] := b;
+            break; // Sai do loop interno 'j'
+         end;
+      end;
+   finally
+      FreeMem(tmp);
+   end;
+end;
+
+procedure DeinterleaveGD24(size: Integer; base: PByte);
+var
+   tmp: PByte;
+begin
+   // Específico para ROMs de 24Mbit (como Star Ocean)
+   if size <> $300000 then
+      Exit;
+
+   GetMem(tmp, $80000);
+   try
+      // Reorganiza os grandes blocos de 512KB
+      Move((base + $180000)^, tmp^, $80000);
+      Move((base + $200000)^, (base + $180000)^, $80000);
+      Move((base + $280000)^, (base + $200000)^, $80000);
+      Move(tmp^, (base + $280000)^, $80000);
+   finally
+      FreeMem(tmp);
+   end;
+
+   // Após a reorganização inicial, aplica o desentrelaçamento padrão
+   DeinterleaveType1(size, base);
+end;
 
 procedure Map_Initialize;
 var
@@ -273,6 +343,44 @@ begin
    end;
 end;
 
+procedure map_hirom(bank_s, bank_e, addr_s, addr_e, size: Cardinal);
+var
+   c, i, p, addr: Cardinal;
+begin
+   for c := bank_s to bank_e do
+   begin
+      i := addr_s;
+      while i <= addr_e do
+      begin
+         p := (c shl 4) or (i shr 12);
+         addr := c shl 16;
+         Memory.Map[p] := Memory.ROM + map_mirror(size, addr);
+         Memory.BlockIsROM[p] := 1;
+         Memory.BlockIsRAM[p] := 0;
+         Inc(i, MEMMAP_BLOCK_SIZE);
+      end;
+   end;
+end;
+
+procedure map_hirom_offset(bank_s, bank_e, addr_s, addr_e, size, offset: Cardinal);
+var
+   c, i, p, addr: Cardinal;
+begin
+   for c := bank_s to bank_e do
+   begin
+      i := addr_s;
+      while i <= addr_e do
+      begin
+         p := (c shl 4) or (i shr 12);
+         addr := (c - bank_s) shl 16;
+         Memory.Map[p] := Memory.ROM + offset + map_mirror(size, addr);
+         Memory.BlockIsROM[p] := 1;
+         Memory.BlockIsRAM[p] := 0;
+         Inc(i, MEMMAP_BLOCK_SIZE);
+      end;
+   end;
+end;
+
 procedure map_index(bank_s, bank_e, addr_s, addr_e: Cardinal; index: NativeUInt; map_type: Integer);
 const
    MAP_TYPE_I_O = 0;
@@ -329,6 +437,26 @@ begin
       map_index($f0, $ff, $0000, hi, MAP_LOROM_SRAM, 2);
 end;
 
+procedure map_HiROMSRAM;
+begin
+   // Mapeia a SRAM em bancos de $20-$3F e $A0-$BF, no range $6000-$7FFF
+   map_index($20, $3F, $6000, $7FFF, MAP_HIROM_SRAM, 2); // 2 = MAP_TYPE_RAM
+   map_index($A0, $BF, $6000, $7FFF, MAP_HIROM_SRAM, 2); // 2 = MAP_TYPE_RAM
+end;
+
+procedure map__XBAND;
+var
+   c: Integer;
+begin
+   // O modem XBAND mapeia sua própria RAM nos bancos $E0-$FF
+   for c := 0 to $1FF do // Corresponde a 512 blocos de 4KB
+   begin
+      Memory.Map[c + $E00] := Pointer(MAP_XBAND);
+      Memory.BlockIsRAM[c + $E00] := 1;
+      Memory.BlockIsROM[c + $E00] := 0;
+   end;
+end;
+
 procedure map_DSP;
 begin
    // Porte da lógica de `map_DSP` de `memmap.c`
@@ -378,6 +506,35 @@ begin
    map_WriteProtectROM;
 end;
 
+procedure Map_HiROMMap;
+begin
+   map_System; // Mapeia WRAM e registradores I/O básicos
+
+   // Mapeia a ROM HiROM.
+   // Bancos $00-$3F e $80-$BF, de $8000-$FFFF (metade superior dos bancos)
+   map_hirom($00, $3F, $8000, $FFFF, Memory.CalculatedSize);
+   map_hirom($80, $BF, $8000, $FFFF, Memory.CalculatedSize);
+
+   // Bancos $40-$7F e $C0-$FF, de $0000-$FFFF (bancos inteiros)
+   map_hirom($40, $7F, $0000, $FFFF, Memory.CalculatedSize);
+   map_hirom($C0, $FF, $0000, $FFFF, Memory.CalculatedSize);
+
+   // Verifica se há chips especiais que alteram o mapa
+   if (Settings.Chip and CHIP_DSP) = CHIP_DSP then
+      map_DSP
+   else if (Settings.Chip and CHIP_XBAND) = CHIP_XBAND then
+      map__XBAND;
+
+   // Mapeia a SRAM
+   map_HiROMSRAM;
+
+   // Mapeia a WRAM sobrepondo as áreas necessárias
+   map_WRAM;
+
+   // Protege as áreas de ROM contra escrita
+   map_WriteProtectROM;
+end;
+
 // --- Implementação das Funções da Interface ---
 
 function InitMemory: Boolean;
@@ -402,20 +559,74 @@ begin
       Exit(False);
    end;
 
-//   if not InitAPU then
-//   begin
-//      DeinitMemory;
-//      Exit(False);
-//   end;
+   if not InitAPU then
+   begin
+      DeinitMemory;
+      Exit(False);
+   end;
 
    Result := True;
 end;
 
 procedure DeinitMemory;
 begin
-//   DeinitAPU;
+   DeinitAPU;
    DeinitGFX;
    FillChar(Memory, SizeOf(TMemory), 0);
+end;
+
+procedure ParseSNESHeader(RomHeader: PByte);
+var
+   size_count: Cardinal;
+   l, r, l2, r2: Integer;
+begin
+   if (Settings.Chip and CHIP_BS) = CHIP_BS then
+   begin
+      Memory.SRAMSize := $05;
+      // strncpy equivalent
+      System.SysUtils.StrLCopy(Memory.ROMName, PAnsiChar(RomHeader + $10), 17);
+      FillChar(Memory.ROMName[17], ROM_NAME_LEN - 1 - 17, #0);
+      Memory.ROMSpeed := RomHeader[$28];
+      Memory.ROMType := $e5;
+      Memory.ROMSize := 1;
+
+      size_count := $800;
+      while size_count < Memory.CalculatedSize do
+      begin
+         size_count := size_count shl 1;
+         Inc(Memory.ROMSize);
+      end;
+   end
+   else
+   begin
+      Memory.SRAMSize := RomHeader[$28];
+      System.SysUtils.StrLCopy(Memory.ROMName, PAnsiChar(RomHeader + $10), ROM_NAME_LEN);
+      Memory.ROMSpeed := RomHeader[$25];
+      Memory.ROMType := RomHeader[$26];
+      Memory.ROMSize := RomHeader[$27];
+   end;
+
+   Memory.ROMRegion := RomHeader[$29];
+   Move((RomHeader + $02)^, Memory.ROMId[0], ROM_ID_LEN - 1);
+
+   if RomHeader[$2A] <> $33 then
+   begin
+      Memory.CompanyId := ((RomHeader[$2A] shr 4) and $0F) * 36 + (RomHeader[$2A] and $0F);
+   end
+   else if IsLetterOrDigit(Char(RomHeader[$00])) and IsLetterOrDigit(Char(RomHeader[$01])) then
+   begin
+      l := Ord(UpCase(AnsiChar(RomHeader[$00])));
+      r := Ord(UpCase(AnsiChar(RomHeader[$01])));
+      if l > Ord('9') then
+         l2 := l - Ord('7')
+      else
+         l2 := l - Ord('0');
+      if r > Ord('9') then
+         r2 := r - Ord('7')
+      else
+         r2 := r - Ord('0');
+      Memory.CompanyId := l2 * 36 + r2;
+   end;
 end;
 
 function LoadROM(const AGameData: TBytes; var AInfoBuffer: string): Boolean;
@@ -423,96 +634,265 @@ var
    TotalFileSize: Integer;
    SrcPtr: PByte;
    hi_score, lo_score: integer;
+   // Variáveis para a lógica de desentrelaçamento (deinterleave)
+   Interleaved: Boolean;
+   Tales: Boolean;
+   // Variável para a lógica de ROMs Jumbo (não portada ainda, mas preparada)
+   // loromscore, hiromscore, swappedlorom, swappedhirom: Integer;
 begin
    Result := False;
    TotalFileSize := Length(AGameData);
-   SrcPtr := PByte(AGameData);
-
    if TotalFileSize = 0 then
       Exit;
 
-   // Lógica para detectar e remover header SMC de 512 bytes
+   // A DeinitSPC7110() do C estaria aqui, se portada.
+
+   Memory.CalculatedSize := 0;
+   Memory.HeaderCount := 0;
+   Memory.ExtendedFormat := 0; // NOPE
+
+   SrcPtr := PByte(AGameData);
+
+   // Lógica para detectar e remover o header SMC de 512 bytes
    if (TotalFileSize and $1FFF) = $200 then
    begin
       Dec(TotalFileSize, $200);
       Inc(SrcPtr, $200);
+      Memory.HeaderCount := 1;
    end;
 
    if TotalFileSize > MAX_ROM_SIZE then
    begin
-      // Lidar com erro de ROM muito grande
+      AInfoBuffer := 'Erro: ROM excede o tamanho máximo suportado.';
       Exit;
    end;
 
    // Copia os dados da ROM para a memória do emulador
    Move(SrcPtr^, Memory.ROM^, TotalFileSize);
 
-   Memory.CalculatedSize := TotalFileSize and not $1FFF; // Arredonda para baixo
+   // Arredonda o tamanho calculado para o múltiplo de $2000 mais próximo
+   Memory.CalculatedSize := TotalFileSize and not $1FFF;
 
-   // Zera o resto do espaço de ROM
+   // Zera o resto do espaço de ROM não utilizado para evitar dados "lixo"
    FillChar(Memory.ROM[Memory.CalculatedSize], MAX_ROM_SIZE - Memory.CalculatedSize, 0);
 
-   // Lógica de `ScoreHiROM` e `ScoreLoROM` para detectar o tipo de mapa
+   // Pontua a ROM para determinar se é LoROM ou HiROM
    hi_score := ScoreHiROM(False, 0);
    lo_score := ScoreLoROM(False, 0);
 
-   // (A lógica completa de detecção de formato estendido (Jumbo ROM) e desentrelaçamento (Deinterleave) seria portada aqui)
+   // TODO: Adicionar lógica para formatos extendidos (Jumbo ROMs) aqui, se necessário.
+   // Por enquanto, seguimos a lógica simples.
 
    if lo_score >= hi_score then
-   begin
-      Memory.LoROM := True;
-      ROMHeader := Memory.ROM + $7FB0;
-   end
+      Memory.LoROM := True
    else
-   begin
       Memory.LoROM := False;
-      ROMHeader := Memory.ROM + $FFB0;
+
+   // Lógica de detecção de formato "interleaved" (entralaçado)
+   Interleaved := False;
+   Tales := False;
+   if Memory.LoROM then
+   begin
+      if ((Memory.ROM[$7FD5] and $F0) = $20) or ((Memory.ROM[$7FD5] and $F0) = $30) then
+         case (Memory.ROM[$7FD5] and $F) of
+            5: Tales := True; // Tales of Phantasia
+            1: Interleaved := True;
+         end;
+   end
+   else // HiROM
+   begin
+      if ((Memory.ROM[$FFD5] and $F0) = $20) or ((Memory.ROM[$FFD5] and $F0) = $30) then
+         case (Memory.ROM[$FFD5] and $F) of
+            0, 3: Interleaved := True;
+         end;
    end;
 
+    if Interleaved then
+   begin
+      if Tales then // Tratamento especial para Tales of Phantasia
+      begin
+         // A lógica para 'Tales' é mais complexa devido ao formato Jumbo
+         // E também inverte o tipo de mapa de memória
+         // if Memory.ExtendedFormat = BIGFIRST then
+         // begin
+         //   DeinterleaveType1($400000, Memory.ROM);
+         //   DeinterleaveType1(Memory.CalculatedSize - $400000, Memory.ROM + $400000);
+         // end
+         // else
+         // begin
+         //   DeinterleaveType1(Memory.CalculatedSize - $400000, Memory.ROM);
+         //   DeinterleaveType1($400000, Memory.ROM + Memory.CalculatedSize - $400000);
+         // end;
+         Memory.LoROM := False; // Tales é HiROM após o processo
+      end
+      else if Memory.CalculatedSize = $300000 then // Star Ocean (GD24)
+      begin
+         Memory.LoROM := not Memory.LoROM;
+         DeinterleaveGD24(Memory.CalculatedSize, Memory.ROM);
+      end
+      else // Formato padrão Type1
+      begin
+         Memory.LoROM := not Memory.LoROM;
+         DeinterleaveType1(Memory.CalculatedSize, Memory.ROM);
+      end;
+   end;
+
+   // Inicializa o mapa de memória e o hardware com base na ROM carregada
    InitROM;
+
+   // TODO: Portar a lógica de `ApplyCheats` se for usar cheats.
    // ApplyCheats();
+
+   // Reseta o estado do emulador para o novo jogo
    Reset;
 
-   // (A função `ROMInfo` seria chamada aqui para preencher o AInfoBuffer)
-   AInfoBuffer := 'Informações da ROM...'; // Placeholder
+   // TODO: Portar a função `ROMInfo` para preencher o buffer de informações.
+   AInfoBuffer := 'ROM carregada com sucesso. (Info a ser implementada)';
 
    Result := True;
 end;
 
 procedure InitROM;
+var
+   RomHeader: PByte;
 begin
-   // Implementação completa de `InitROM` de `memmap.c`
-   // 1. Zera BlockIsRAM/ROM
+   // --- Início da lógica de InitROM ---
+   Settings.Chip := CHIP_NOCHIP;
+   // SuperFX.nRomBanks := Memory.CalculatedSize shr 15; // Lógica do SuperFX será em sua própria unit
+
+   // Define o ponteiro para o cabeçalho com base no formato da ROM
+   RomHeader := @Memory.ROM[$7FB0];
+   // if Memory.ExtendedFormat = BIGFIRST then Inc(RomHeader, $400000); // Lógica para ROMs Jumbo
+   if not Memory.LoROM then
+      Inc(RomHeader, $8000);
+
    FillChar(Memory.BlockIsRAM, SizeOf(Memory.BlockIsRAM), 0);
    FillChar(Memory.BlockIsROM, SizeOf(Memory.BlockIsROM), 0);
+   Memory.ROMId[ROM_ID_LEN - 1] := #0;
+   Memory.CompanyId := 0;
 
-   // 2. Chama InitBSX para detectar se é um jogo de Satellaview
-   // InitBSX();
+   // InitBSX(); // TODO: Portar lógica de detecção BSX
+   ParseSNESHeader(RomHeader);
 
-   // 3. ParseSNESHeader(ROMHeader);
-   // (A lógica de ParseSNESHeader seria portada aqui)
+   // --- Detecção de Chips Especiais ---
+   if Memory.ROMType = $03 then // DSP1/2/3/4
+   begin
+      if Memory.ROMSpeed = $30 then
+         Settings.Chip := CHIP_DSP_4
+      else
+         Settings.Chip := CHIP_DSP_1;
+   end
+   else if Memory.ROMType = $05 then
+   begin
+      if Memory.ROMSpeed = $20 then
+         Settings.Chip := CHIP_DSP_2
+      else if (Memory.ROMSpeed = $30) and (RomHeader[$2a] = $b2) then
+         Settings.Chip := CHIP_DSP_3
+      else
+         Settings.Chip := CHIP_DSP_1;
+   end;
 
-   // 4. Detecta e inicializa chips especiais
-   // (O grande `switch` de `memmap.c` para detectar chips seria portado aqui)
+   // TODO: Portar a configuração do DSP (SetDSP/GetDSP) na unit do DSP
+   // case Settings.Chip of
+   //   CHIP_DSP_1: ...
+   //   CHIP_DSP_2: ...
+   // end;
 
-   // 5. Chama a função de mapeamento apropriada
+   // Detecção baseada na combinação de Tipo e Velocidade
+   case (Memory.ROMType shl 8) or Memory.ROMSpeed of
+      $5535: begin
+         Settings.Chip := CHIP_S_RTC;
+         // InitSRTC();
+      end;
+      $F93A: begin
+         Settings.Chip := CHIP_SPC7110RTC;
+         // InitSPC7110();
+      end;
+      $F53A: begin
+         Settings.Chip := CHIP_SPC7110;
+         // InitSPC7110();
+      end;
+      $2530: Settings.Chip := CHIP_OBC_1;
+      $3423, $3523: Settings.Chip := CHIP_SA_1;
+      $1320, $1420, $1520, $1A20, $1330, $1430, $1530, $1A30:
+      begin
+         Settings.Chip := CHIP_GSU;
+         if RomHeader[$2A] = $33 then // Corrigido de 0x7FDA para offset relativo
+            Memory.SRAMSize := RomHeader[$0D] // 0x7FBD - 0x7FB0
+         else
+            Memory.SRAMSize := 5;
+      end;
+      $4332, $4532: Settings.Chip := CHIP_S_DD1;
+      $F530:
+      begin
+         Settings.Chip := CHIP_ST_018;
+         // SetSETA := @NullSet; GetSETA := @NullGet;
+         Memory.SRAMSize := 2;
+      end;
+      $F630:
+      begin
+         if RomHeader[$27] = $09 then // 0x7FD7 - 0x7FB0
+         begin
+            Settings.Chip := CHIP_ST_011;
+            // SetSETA := @NullSet; GetSETA := @NullGet;
+         end
+         else
+         begin
+            Settings.Chip := CHIP_ST_010;
+            // SetSETA := @SetST010; GetSETA := @GetST010;
+         end;
+         Memory.SRAMSize := 2;
+      end;
+      $F320: Settings.Chip := CHIP_CX_4;
+   end;
+
+   // --- Seleção e Construção do Mapa de Memória ---
    Map_Initialize;
-   if Memory.LoROM then
-      Map_LoROMMap // Exemplo, a lógica real escolheria o mapa correto
-   else
-      ;// Map_HiROMMap;
 
-   // 6. Configura PAL/NTSC
-   Settings.PAL := (Memory.ROMRegion >= 2) and (Memory.ROMRegion <= 12);
+   if (Settings.Chip and CHIP_BS) = CHIP_BS then
+   begin
+      // Lógica para BS-X
+   end
+   else if Memory.LoROM then
+   begin
+      // if (Settings.Chip = CHIP_ST_010) or (Settings.Chip = CHIP_ST_011) then
+      //   Map_SetaDSPLoROMMap
+      // else if Settings.Chip = CHIP_GSU then
+      //   Map_SuperFXLoROMMap
+      // else if Settings.Chip = CHIP_SA_1 then
+      //   Map_SA1LoROMMap
+      // else if Settings.Chip = CHIP_S_DD1 then
+      //   Map_SDD1LoROMMap
+      // ... (outros mapas especiais LoROM)
+      // else
+      Map_LoROMMap; // O mapa padrão para LoROM
+   end
+   else // HiROM
+   begin
+      // if (Settings.Chip and CHIP_SPC7110) = CHIP_SPC7110 then
+      //   Map_SPC7110HiROMMap
+      // else if (Settings.Chip and CHIP_XBAND) = CHIP_XBAND then
+      //   Map__XBAND
+      // else
+      Map_HiROMMap; // O mapa padrão para HiROM
+   end;
 
-   // 7. Calcula a máscara de SRAM
+   // --- Finalização ---
+   Settings.PAL := ((Settings.Chip and CHIP_BS) <> CHIP_BS) and (((Memory.ROMRegion >= 2) and (Memory.ROMRegion <= 12)) or (Memory.ROMRegion = 18));
+
+   // Garante que o nome da ROM seja nulo-terminado
+   Memory.ROMName[High(Memory.ROMName)] := #0;
+
+   // Remove espaços em branco do final do nome da ROM
+   // (Lógica de trim omitida, mas pode ser adicionada se necessário)
+
    if Memory.SRAMSize > 0 then
       Memory.SRAMMask := ((1 shl (Memory.SRAMSize + 3)) * 128) - 1
    else
       Memory.SRAMMask := 0;
 
    SetMainLoop;
-   // 9. ApplyROMFixes;
+   // ApplyROMFixes; // TODO: Portar correções específicas de jogos
 end;
 
 // --- Funções de Acesso à Memória Portadas de `getset.c` ---
@@ -550,7 +930,7 @@ begin
 //      MAP_OBC_RAM: Result := GetOBC1(Address and $ffff);
 //      MAP_SETA_DSP: Result := GetSETA(Address);
 //      MAP_BSX: Result := GetBSX(Address);
-//      MAP_XBAND: Result := GetXBAND(Address);
+//      MAP__XBAND: Result := GetXBAND(Address);
       else // MAP_NONE
          Result := ICPU.OpenBus;
    end;
@@ -603,7 +983,7 @@ begin
 //      MAP_OBC_RAM: SetOBC1(ByteValue, Address and $ffff);
 //      MAP_SETA_DSP: SetSETA(ByteValue, Address);
 //      MAP_BSX: SetBSX(ByteValue, Address);
-//      MAP_XBAND: SetXBAND(ByteValue, Address);
+//      MAP__XBAND: SetXBAND(ByteValue, Address);
       else // MAP_NONE
          // Do nothing
    end;
@@ -616,52 +996,55 @@ var
   a: TPC_t;
   block: Integer;
   GetAddress: Pointer;
+  low_byte, high_byte: Byte;
 begin
-  mask := MEMMAP_MASK;
+  mask := $FFFFFFFF; // Equivalente a MEMMAP_MAX_ADDRESS
   case w of
     WRAP_PAGE: mask := mask and $ff;
     WRAP_BANK: mask := mask and $ffff;
   end;
 
-  if (Address and mask) = mask then
+  // Primeiro, verifica se a leitura de 16-bits não cruzará uma fronteira de wrap.
+  if (Address and mask) <> mask then
   begin
-    ICPU.OpenBus := GetByte(Address);
-    Result := ICPU.OpenBus;
-    case w of
-      WRAP_PAGE:
-      begin
-        a.xPBPC := Address;
-        Inc(a.PC.L);
-        Result := Result or (GetByte(a.xPBPC) shl 8);
-      end;
-      WRAP_BANK:
-      begin
-        a.xPBPC := Address;
-        Inc(a.PC.W);
-        Result := Result or (GetByte(a.xPBPC) shl 8);
-      end;
-    else // WRAP_NONE
-      Result := Result or (GetByte(Address + 1) shl 8);
+    // Se não cruza a fronteira, a leitura pode ser otimizada.
+    block := (Address and $ffffff) shr MEMMAP_SHIFT;
+    GetAddress := Memory.Map[block];
+
+    // Se for um ponteiro de memória direto (RAM ou ROM), lê os 16 bits de uma vez.
+    if NativeUInt(GetAddress) >= MAP_LAST then
+    begin
+      if Memory.BlockIsRAM[block] <> 0 then
+        CPU.WaitPC := CPU.PCAtOpcodeStart;
+
+      Result := PWord(NativeUInt(GetAddress) + (Address and $ffff))^;
+      AddCyclesX2InMemAccess(Address);
+      Exit;
     end;
-    Exit;
   end;
 
-  block := (Address and $ffffff) shr MEMMAP_SHIFT;
-  GetAddress := Memory.Map[block];
+  // Se a leitura cruza uma fronteira de wrap OU se é uma área de registradores, devemos ler byte por byte obrigatoriamente.
+  low_byte := GetByte(Address);
 
-  if NativeUInt(GetAddress) >= MAP_LAST then
-  begin
-    if Memory.BlockIsRAM[block] <> 0 then
-      CPU.WaitPC := CPU.PCAtOpcodeStart;
-    Result := PWord(NativeUInt(GetAddress) + (Address and $ffff))^;
-    AddCyclesX2InMemAccess(Address);
-    Exit;
+  // Calcula o endereço do segundo byte, respeitando o wrap.
+  case w of
+    WRAP_PAGE:
+    begin
+      a.xPBPC := Address;
+      Inc(a.PC.L); // Incrementa apenas o byte baixo do PC, mantendo o banco.
+      high_byte := GetByte(a.xPBPC);
+    end;
+    WRAP_BANK:
+    begin
+      a.xPBPC := Address;
+      Inc(a.PC.W); // Incrementa o Word do PC, mantendo o banco.
+      high_byte := GetByte(a.xPBPC);
+    end;
+  else // WRAP_NONE
+    high_byte := GetByte(Address + 1);
   end;
 
-  // Lógica de `case` para ponteiros especiais (omitida para brevidade, mas segue o padrão de GetByte)
-  // ...
-  Result := ICPU.OpenBus or (ICPU.OpenBus shl 8);
-  AddCyclesX2InMemAccess(Address);
+  Result := low_byte or (high_byte shl 8);
 end;
 
 procedure SetWord(WordValue: Word; Address: Cardinal; w: TWrapType; o: TWriteOrder);
@@ -670,86 +1053,155 @@ var
   a: TPC_t;
   block: Integer;
   SetAddress: Pointer;
+  low_byte, high_byte: Byte;
+  addr2: Cardinal;
 begin
-  mask := MEMMAP_MASK;
-  case w of
-    WRAP_PAGE: mask := mask and $ff;
-    WRAP_BANK: mask := mask and $ffff;
-  end;
+   mask := $FFFFFFFF; // Equivalente a MEMMAP_MAX_ADDRESS
+   case w of
+      WRAP_PAGE: mask := mask and $ff;
+      WRAP_BANK: mask := mask and $ffff;
+   end;
 
-  if (Address and mask) = mask then
-  begin
-    if o = WRITE_01 then
-      SetByte(Byte(WordValue), Address)
-    else
-      SetByte(Byte(WordValue shr 8), Address + 1); // Simplificado, a lógica de wrap é mais complexa
+   // Prepara os bytes com base na ordem de escrita
+   if o = WRITE_01 then // LSB primeiro, MSB depois
+   begin
+      low_byte := Byte(WordValue);
+      high_byte := Byte(WordValue shr 8);
+   end
+   else // WRITE_10: MSB primeiro, LSB depois
+   begin
+      high_byte := Byte(WordValue);
+      low_byte := Byte(WordValue shr 8);
+   end;
 
-    if o = WRITE_10 then
-      SetByte(Byte(WordValue), Address)
-    else
-      SetByte(Byte(WordValue shr 8), Address + 1); // Simplificado
+   // Tenta o "caminho rápido" (escrita direta de 16 bits)
+   // Isso só é possível se não cruzar uma fronteira de wrap e se o destino for memória direta.
+   if (Address and mask) <> mask then
+   begin
+      CPU.WaitPC := 0;
+      block := (Address and $ffffff) shr MEMMAP_SHIFT;
+      SetAddress := Memory.WriteMap[block];
 
-    Exit;
-  end;
+      // Verifica se o endereço aponta para RAM/SRAM (não ROM ou I/O)
+      if NativeUInt(SetAddress) >= MAP_LAST then
+      begin
+         PWord(NativeUInt(SetAddress) + (Address and $ffff))^ := WordValue;
+         AddCyclesX2InMemAccess(Address);
+         Exit;
+      end;
+   end;
 
-  CPU.WaitPC := 0;
-  block := (Address and $ffffff) shr MEMMAP_SHIFT;
-  SetAddress := Memory.WriteMap[block];
+   // Se o caminho rápido não for possível, recorre ao "caminho seguro" (byte a byte)
+   // Calcula o endereço do segundo byte, respeitando o wrap
+   case w of
+      WRAP_PAGE:
+      begin
+         a.xPBPC := Address;
+         Inc(a.PC.L);
+         addr2 := a.xPBPC;
+      end;
+      WRAP_BANK:
+      begin
+         a.xPBPC := Address;
+         Inc(a.PC.W);
+         addr2 := a.xPBPC;
+      end;
+      else // WRAP_NONE
+         addr2 := Address + 1;
+   end;
 
-  if NativeUInt(SetAddress) >= MAP_LAST then
-  begin
-    PWord(NativeUInt(SetAddress) + (Address and $ffff))^ := WordValue;
-    AddCyclesX2InMemAccess(Address);
-    Exit;
-  end;
-
-  // Lógica de `case` para ponteiros especiais (omitida para brevidade, mas segue o padrão de SetByte)
-  AddCyclesX2InMemAccess(Address);
+   // Escreve os bytes na ordem correta
+   if o = WRITE_01 then
+   begin
+      SetByte(low_byte, Address);
+      SetByte(high_byte, addr2);
+   end
+   else // WRITE_10
+   begin
+      SetByte(high_byte, Address);
+      SetByte(low_byte, addr2);
+   end;
 end;
 
 function GetBasePointer(Address: Cardinal): PByte;
 var
-  GetAddress: Pointer;
+   GetAddress: Pointer;
+   block: Cardinal;
 begin
-  GetAddress := Memory.Map[(Address and $ffffff) shr MEMMAP_SHIFT];
+   block := (Address and $FFFFFF) shr MEMMAP_SHIFT;
+   GetAddress := Memory.Map[block];
 
-  if NativeUInt(GetAddress) >= MAP_LAST then
-  begin
-    Result := PByte(GetAddress);
-    Exit;
-  end;
+   // Se o ponteiro for um endereço de memória real (maior que o último índice de mapa),
+   // significa que é um bloco de RAM ou ROM, então retornamos o ponteiro base.
+   if NativeUInt(GetAddress) >= MAP_LAST then
+   begin
+      Result := PByte(GetAddress);
+      Exit;
+   end;
 
-  case NativeUInt(GetAddress) of
-    MAP_CPU, MAP_PPU: Result := @Memory.FillRAM[0];
-    MAP_LOROM_SRAM:
-      if (Memory.SRAMMask and MEMMAP_MASK) <> MEMMAP_MASK then
-         Result := nil
+   // Se for uma área mapeada especial, precisamos tratá-la.
+   case NativeUInt(GetAddress) of
+      MAP_CPU,
+      MAP_PPU:
+         // Acessos a registradores da CPU/PPU são mapeados para a FillRAM, que é uma área "falsa"
+         // para conter os valores lidos. Não é um ponteiro de acesso direto real.
+         Result := @Memory.FillRAM[0];
+      MAP_LOROM_SRAM,
+      MAP_HIROM_SRAM,
+      MAP_RONLY_SRAM,
+      MAP_SA1RAM:
+         // Se a SRAM for contígua e totalmente mapeada, podemos retornar um ponteiro base.
+         // Se a máscara não cobrir todo o espaço, o acesso não é linear, então não podemos.
+         if (Memory.SRAMMask and MEMMAP_MASK) <> MEMMAP_MASK then
+            Result := nil
+         else
+            Result := @Memory.SRAM[0];
+      MAP_BWRAM: Result := Memory.BWRAM;
+      MAP_SPC7110_DRAM: Result := @Memory.FillRAM[0]; // Obtenha o endereço do início do array da DRAM do SPC7110
       else
-         Result := @Memory.SRAM[0];
-    // ... e assim por diante para os outros tipos de mapa
-  else
-    Result := nil;
-  end;
+         // Para todos os outros casos (MAP_NONE, MAP_DSP, etc.), não há um ponteiro base
+         // direto e contínuo que possa ser retornado com segurança.
+         Result := nil;
+   end;
 end;
 
 function GetMemPointer(Address: Cardinal): PByte;
 var
-  GetAddress: Pointer;
+   GetAddress: Pointer;
+   block: Cardinal;
 begin
-  GetAddress := Memory.Map[(Address and $ffffff) shr MEMMAP_SHIFT];
+   block := (Address and $FFFFFF) shr MEMMAP_SHIFT;
+   GetAddress := Memory.Map[block];
 
-  if NativeUInt(GetAddress) >= MAP_LAST then
-  begin
-    Result := PByte(NativeUInt(GetAddress) + (Address and $ffff));
-    Exit;
-  end;
+   // Se for um ponteiro de memória real, calculamos o endereço exato.
+   if NativeUInt(GetAddress) >= MAP_LAST then
+   begin
+      Result := PByte(NativeUInt(GetAddress) + (Address and MEMMAP_MASK));
+      Exit;
+   end;
 
-  case NativeUInt(GetAddress) of
-    MAP_CPU, MAP_PPU: Result := @Memory.FillRAM[Address and $7fff];
-    // ... e assim por diante para os outros tipos de mapa
-  else
-    Result := nil;
-  end;
+   // Se for uma área mapeada especial, verificamos se podemos obter um ponteiro direto.
+   case NativeUInt(GetAddress) of
+      MAP_CPU,
+      MAP_PPU:
+         // Registradores não podem ser acessados via ponteiro direto. O valor é lido/escrito
+         // através de Get/Set. No entanto, o C retornava um ponteiro para FillRAM.
+         Result := @Memory.FillRAM[Address and $7FFF];
+      MAP_LOROM_SRAM,
+      MAP_HIROM_SRAM,
+      MAP_RONLY_SRAM:
+         // Só podemos retornar um ponteiro para a SRAM se ela estiver presente.
+         if Memory.SRAMMask <> 0 then
+            Result := @Memory.SRAM[Address and Memory.SRAMMask]
+         else
+            Result := nil;
+      MAP_BWRAM: Result := @Memory.BWRAM[(Address and $7FFF) - $6000];
+      MAP_SA1RAM: Result := @Memory.SRAM[Address and $FFFF];
+      MAP_SPC7110_DRAM: Result := @Memory.FillRAM[Address and $FFFF];
+      else
+         // Para todos os outros casos, é mais seguro retornar nil para forçar o uso de GetByte/SetByte.
+         Result := nil;
+   end;
 end;
 
 procedure SetPCBase(Address: Cardinal);

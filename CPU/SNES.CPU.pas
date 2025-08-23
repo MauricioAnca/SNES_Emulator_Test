@@ -32,7 +32,7 @@ uses
   SNES.CPU.Opcodes,
   SNES.PPU,
   SNES.GFX,
-//  SNES.APU,
+  SNES.APU,
   SNES.DMA;
 //  SNES.Chips.SuperFX,
 //  SNES.Chips.SA1;
@@ -271,16 +271,16 @@ begin
          if finishedFrame then
             Break;
 
-         // APUExecute();
+         APUMainLoop;
 
       until False; // Loop infinito, quebra com `Break`
 
-      //ICPU.Registers.PC.W := IAPU.PC - IAPU.RAM; // Sincronização APU
+      ICPU.Registers.PCw := IAPU.PC - IAPU.RAM; // Sincronização APU
 
       if not finishedFrame then
       begin
          PackStatus;
-         //APUPackStatus;
+         APUPackStatus;
          CPU.Flags := CPU.Flags and not SCAN_KEYS_FLAG;
       end
       else
@@ -515,7 +515,7 @@ begin
    // ...
    ResetCPU;
    ResetDMA;
-//   ResetAPU;
+   ResetAPU;
 end;
 
 procedure Reset;
